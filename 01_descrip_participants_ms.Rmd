@@ -1,0 +1,171 @@
+---
+title: "Descriptives of Participants"
+author: "Janet Bang"
+date: "November 17, 2022"
+output:
+  html_document: 
+   toc: true
+   toc_float: true
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+This code is for the participant demographic information in the manuscript.
+
+## Load libraries and set theme
+```{r}
+library(tidyverse)
+library(compareGroups)
+library(gridExtra)
+
+theme_set(theme_classic())
+```
+
+
+## Read in demographic information
+```{r}
+demo_english <- read_csv("./data_demo_lena_transcripts/demo_english_ms.csv") %>% 
+  rename(id = "ID", birth_order = "birthorder", 
+         momed ="Momed", 
+         hi = "HI24Final", ethnicity = "ethnicity_18m_or_25m",
+         age = "Age24") %>% 
+  mutate(income2 = ifelse(grepl("<25K", income), "0", 
+                   ifelse(grepl("25-50K", income), "1", 
+                   ifelse(grepl("50-100K", income), "2", 
+                   ifelse(grepl("100-150K", income), "3", 
+                   ifelse(grepl("150-200K", income), "4", "other")))))) %>% 
+  mutate(sex = ifelse(Sex == 1, "Female", "Male")) %>% 
+  dplyr::select(-Sex)
+
+demo_spanish <- read_csv("./data_demo_lena_transcripts/demo_spanish_ms.csv") %>%
+  rename(id = "ID", sex = "Sex", birth_order = "BirthOrder", 
+         momed = "MomEd_25m",  
+         momyrs_us = "MomYrsUS", dadyrs_us = "DadYrsUS",
+         allday_25m_reclength_hrs = "AD25_RecLengthHrs_ALL", 
+         allday_25m_AWChr = "AD25AWChr", hi = "HI_18", 
+         age = "Age25m", span_exposure_25m = "LBQSpan25m") %>% 
+  mutate(income2 = ifelse(grepl("<25K", income), "0", 
+                   ifelse(grepl("25-50K", income), "1", 
+                   ifelse(grepl("50-100K", income), "2", 
+                   ifelse(grepl("100-150K", income), "3", 
+                   ifelse(grepl("150-200K", income), "4", "other"))))))
+```
+
+
+# English-speaking families: Race/Ethnicities
+```{r}
+# English
+demo_english %>% 
+  count(ethnicity) %>% 
+  mutate(prop = round(n/sum(n), 4)) %>% 
+  arrange(desc(prop))
+```
+
+
+# Spanish-speaking families: Lang exposure, Mothers' country of birth, Mothers' years in US
+```{r}
+# Spanish
+# language exposure
+mean(demo_spanish$span_exposure_25m)
+sd(demo_spanish$span_exposure_25m)
+min(demo_spanish$span_exposure_25m)
+max(demo_spanish$span_exposure_25m)
+
+# mom country of birth
+demo_spanish %>% 
+  count(mom_country_birth) %>% 
+  mutate(prop = round(n/sum(n), 4)) %>% 
+  arrange(desc(prop))
+
+
+# years in the US - excluding US born
+demo_spanish_US_yrs <- demo_spanish %>% 
+  filter(mom_country_birth != "us")
+
+mean(demo_spanish_US_yrs$momyrs_us)
+median(demo_spanish_US_yrs$momyrs_us)
+min(demo_spanish_US_yrs$momyrs_us)
+max(demo_spanish_US_yrs$momyrs_us)
+
+```
+
+
+
+# Demographics table
+```{r}
+demo_english2 <- demo_english %>% 
+  dplyr::select(age, sex, birth_order, momed, hi, income2) %>% 
+  mutate(language = "english") %>% 
+  mutate(birth_order = as.factor(birth_order))
+
+demo_spanish2 <- demo_spanish %>% 
+  dplyr::select(age, sex, birth_order, momed, hi, income2) %>% 
+  mutate(language = "spanish") %>% 
+  mutate(birth_order = as.factor(birth_order))
+
+# combine languages to one df
+demo_both <- rbind(demo_english2, demo_spanish2)
+
+# run compareGroups
+compare_lang_summary <- compareGroups(language ~ age + sex + birth_order
+                                       + momed + hi + income2,
+                                       data = demo_both)
+
+# print table
+# income2: 0 = <$25K, 1 = $25K - $50K, 2 = $50K - $100K, 3 = $100K - $150K, 4 = $150K - $200K
+print(createTable(compare_lang_summary, digits = 2, type = 2, show.n = TRUE), 
+      header.labels = c(p.overall = "p-value"))
+
+# range for child age
+min(demo_english2$age)
+max(demo_english2$age)
+
+min(demo_spanish2$age)
+max(demo_spanish2$age)
+
+# range for maternal ed
+min(demo_english2$momed)
+max(demo_english2$momed)
+
+min(demo_spanish2$momed)
+max(demo_spanish2$momed)
+
+
+# range for hi
+min(demo_english2$hi)
+max(demo_english2$hi)
+
+min(demo_spanish2$hi)
+max(demo_spanish2$hi)
+```
+
+
+
+## Plots - Parent Ed for English and Spanish
+```{r}
+# standardize variables and naming
+demo_english3 <- demo_english %>% 
+  dplyr::select(id, hi, momed) %>% 
+  mutate(group = "english")
+
+demo_spanish3 <- demo_spanish %>% 
+  dplyr::select(id, hi, momed) %>% 
+  mutate(group = "spanish")
+
+
+# combine dfs
+both_groups <- bind_rows(demo_spanish3, demo_english3) %>% 
+  mutate(group = factor(group))
+
+
+# plot of momed
+ggplot(both_groups, aes(momed, fill = group)) + 
+  geom_density(alpha = .6) + 
+  scale_fill_manual(values = c("coral1", "cornflowerblue"))
+```
+

@@ -1,0 +1,280 @@
+---
+title: "Descriptives of Caregiver Speech - Automated LENA values"
+author: "Janet Bang"
+date: "November 17, 2022"
+output:
+  html_document: 
+   toc: true
+   toc_float: true
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+This code is for the LENA data in the manuscript.
+
+
+# Load libraries and set theme
+```{r}
+library(tidyverse)
+library(ppcor)
+library(gridExtra)
+library(psych)
+
+theme_set(theme_bw())
+```
+
+
+
+# Prep data
+## Read in data
+```{r}
+# lena all-day talk
+lena_allday <- read_csv("./data_demo_lena_transcripts/lena.csv") %>% 
+  mutate(id = factor(id), 
+         language = factor(language))
+
+str(lena_allday)
+
+
+# create two dfs for plots
+lena_allday_en <- lena_allday %>% filter(language == "english")
+lena_allday_sp <- lena_allday %>% filter(language == "spanish")
+
+
+
+# lena - 10 min segments
+lena_10min <- read_csv("./data_demo_lena_transcripts/lena_10min.csv") %>% 
+  mutate(id = factor(id), 
+         language = factor(language))
+
+str(lena_10min)
+
+
+# create two dfs for plots
+lena_10min_en <- lena_10min %>% filter(language == "english")
+lena_10min_sp <- lena_10min %>% filter(language == "spanish")
+```
+
+
+## Duration of 10-min segments
+```{r}
+# English
+mean(lena_10min_en$Dur10minval)/60
+median(lena_10min_en$Dur10minval)/60
+sd(lena_10min_en$Dur10minval)/60
+min(lena_10min_en$Dur10minval)/60
+max(lena_10min_en$Dur10minval)/60
+
+# Spanish
+mean(lena_10min_sp$Dur10minval)/60
+median(lena_10min_sp$Dur10minval)/60
+sd(lena_10min_sp$Dur10minval)/60
+min(lena_10min_sp$Dur10minval)/60
+max(lena_10min_sp$Dur10minval)/60
+```
+
+
+
+# Descriptives of percent of 10 min segments in each language
+```{r}
+lena_10min_en %>% 
+  count(Dur10minval) %>% 
+  mutate(prop = round(n/sum(n), 4)) %>% 
+  arrange(desc(prop))
+
+
+lena_10min_sp %>% 
+  count(Dur10minval) %>% 
+  mutate(prop = round(n/sum(n), 4)) %>% 
+  arrange(desc(prop))
+```
+
+
+
+## Create duration and AWC values for top hr
+```{r}
+tophr_en <- lena_10min_en %>% 
+  mutate(id = factor(id)) %>% 
+  group_by(id) %>% 
+  mutate(dur_total_hr = sum(Dur10minval)/3600, 
+         awc_total_hr = sum(AWCval)) %>% 
+  distinct(id, dur_total_hr, awc_total_hr) %>% 
+  mutate(awc_perhr_densest = awc_total_hr/dur_total_hr) %>% 
+  dplyr::select(id, dur_total_hr, awc_perhr_densest) %>% 
+  mutate(language = "english")
+
+
+tophr_sp <- lena_10min_sp %>% 
+  mutate(id = factor(id)) %>% 
+  group_by(id) %>% 
+  mutate(dur_total_hr = sum(Dur10minval)/3600, 
+         awc_total_hr = sum(AWCval)) %>% 
+  distinct(id, dur_total_hr, awc_total_hr) %>% 
+  mutate(awc_perhr_densest = awc_total_hr/dur_total_hr) %>% 
+  dplyr::select(id, dur_total_hr, awc_perhr_densest) %>% 
+  mutate(language = "spanish")
+
+tophr <- rbind(tophr_en, tophr_sp)
+
+```
+
+
+
+## Descriptives - Top Hour
+```{r}
+# duration
+describeBy(tophr$dur_total_hr, tophr$language, mat = T, fast = T)
+
+# awc/hr
+describeBy(tophr$awc_perhr_densest, tophr$language, mat = T, fast = T)
+
+# max/min ratio
+max(tophr_en$awc_perhr_densest)/min(tophr_en$awc_perhr_densest)
+max(tophr_sp$awc_perhr_densest)/min(tophr_sp$awc_perhr_densest)
+
+```
+
+
+## Descriptives - ALL DAY
+```{r}
+# awc/hr
+describeBy(lena_allday$awc_perhr_cleaned, lena_allday$language, mat = T, fast = T)
+
+# max/min ratio
+# min value in spanish is 512, which is higher than the min value for top hour of tCDS, but all-day includes ODS, so it may be different [family with min value is diff for top hour vs. all-day]
+max(lena_allday$awc_perhr_cleaned)/min(lena_allday$awc_perhr_cleaned)
+max(lena_allday$awc_perhr_cleaned)/min(lena_allday$awc_perhr_cleaned) 
+
+```
+
+
+
+# ALL-DAY TALK
+## AWC - ascending order plot per family
+```{r}
+# separate graphs for english and spanish - otherwise there are gaps in the x axis for id
+awc1 <- ggplot(lena_allday_en, aes(x = reorder(id, awc_perhr_cleaned), y = awc_perhr_cleaned)) +
+  geom_col(fill = "darkgrey") +
+  scale_y_continuous(limits = c(0, 4400)) +
+  theme(legend.position = "none",
+        panel.grid.major = element_blank(),
+        # text = element_text(size=40),
+        axis.text.x = element_blank(),
+        axis.ticks.x = element_blank()) +
+  labs(x = "Families with 2-year-old children", y = "AWC per hour")
+
+
+awc2 <- ggplot(lena_allday_sp, aes(x = reorder(id, awc_perhr_cleaned), y = awc_perhr_cleaned)) +
+  geom_col(fill = "darkgrey") +
+  scale_y_continuous(limits = c(0, 4400)) +
+  theme(legend.position = "none",
+        panel.grid.major = element_blank(),
+        # text = element_text(size=40),
+        axis.text.x = element_blank(),
+        axis.ticks.x = element_blank()) +
+  labs(x = "Families with 2-year-old children", y = "AWC per hour")
+
+grid.arrange(awc1, awc2, ncol = 2)
+```
+
+
+
+
+# TOP HOUR
+## AWC - ascending order plot per family
+```{r}
+awc1_top <- ggplot(tophr_en, aes(x = reorder(id, awc_perhr_densest), y = awc_perhr_densest)) + 
+  geom_col(fill = "white", color = "black") + 
+  scale_y_continuous(limits = c(0, 9000)) + 
+  theme(legend.position = "none", 
+        panel.grid.major = element_blank(),
+        text = element_text(size=40),
+        axis.text.x = element_blank(), 
+        axis.ticks.x = element_blank()) + 
+  labs(x = "Families with 2-year-old children", y = "AWC per densest tCDS hour", title = "English")
+
+# figure for paper
+ggsave("./figures/awc_perdensehr_en.pdf", width = 16, height = 11, dpi = 300)
+
+
+awc2_top <- ggplot(tophr_sp, aes(x = reorder(id, awc_perhr_densest), y = awc_perhr_densest)) + 
+  geom_col(fill = "white", color = "black") + 
+  scale_y_continuous(limits = c(0, 9000)) + 
+  theme(legend.position = "none", 
+        panel.grid.major = element_blank(),
+        text = element_text(size=40),
+        axis.text.x = element_blank(), 
+        axis.ticks.x = element_blank()) + 
+  labs(x = "Families with 2-year-old children", y = "AWC per densest tCDS hour", title = "Spanish")
+# figure for paper
+ggsave("./figures/awc_perdensehr_sp.pdf", width = 16, height = 11, dpi = 300)
+
+awc1_top
+awc2_top
+```
+
+
+
+# TOP HOUR vs. ALL DAY
+## T-test
+```{r}
+# english
+tophr_allday_en <- lena_allday_en %>% 
+  full_join(tophr_en, by = "id")
+
+t.test(tophr_allday_en$awc_perhr_cleaned, tophr_allday_en$awc_perhr_densest, paired = T)
+
+
+# spanish
+tophr_allday_sp <- lena_allday_sp %>% 
+  full_join(tophr_sp, by = "id")
+
+t.test(tophr_allday_sp$awc_perhr_cleaned, tophr_allday_sp$awc_perhr_densest, paired = T)
+
+
+
+# check to see if English and Spanish are different
+tophr_both <- rbind(tophr_allday_en, tophr_allday_sp)
+t.test(tophr_both$uncleaned_lena_dur ~ tophr_both$language.y, paired = F)
+t.test(tophr_both$cleaned_lena_dur ~ tophr_both$language.y, paired = F)
+
+```
+
+
+## Correlations
+```{r}
+# english
+ggplot(tophr_allday_en, aes(awc_perhr_densest, awc_perhr_cleaned)) +
+  geom_point() + 
+  geom_smooth(method = "lm") + 
+  scale_x_continuous(limits = c(200, 9000))+
+  scale_y_continuous(limits = c(200, 4500))+
+  # theme(text = element_text(size = 25)) + 
+  labs(x = "AWC per hour - DENSEST tCDS Hour", y = "AWC per hour - ALL DAY", title = "English") + 
+  annotate("text", x = 2000, y = 4000, label = "paste(r, \" = .74\")", parse = TRUE, size = 10) + 
+  theme(text = element_text(size = 25))
+ggsave("./figures/corr_tophr_allday_en.pdf", width = 10, height = 8)
+
+cor.test(tophr_allday_en$awc_perhr_densest, tophr_allday_en$awc_perhr_cleaned)
+
+
+# spanish
+ggplot(tophr_allday_sp, aes(awc_perhr_densest, awc_perhr_cleaned)) + # .79
+  geom_point() + 
+  geom_smooth(method = "lm") + 
+  scale_x_continuous(limits = c(200, 9000))+
+  scale_y_continuous(limits = c(200, 4500))+
+  # theme(text = element_text(size = 25)) + 
+  labs(x = "AWC per hour - DENSEST tCDS Hour", y = "AWC per hour - ALL DAY", title = "Spanish") + 
+  annotate("text", x = 2000, y = 4000, label = "paste(r, \" = .79\")", parse = TRUE, size = 10) +
+  theme(text = element_text(size = 25))
+ggsave("./figures/corr_tophr_allday_sp.pdf", width = 10, height = 8) 
+
+cor.test(tophr_allday_sp$awc_perhr_densest, tophr_allday_sp$awc_perhr_cleaned)
+
+```

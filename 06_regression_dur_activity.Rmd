@@ -1,0 +1,403 @@
+---
+title: "Regressions - Durations of Activities"
+author: "Janet Bang"
+date: "November 17, 2022"
+output:
+  html_document: 
+    toc: yes
+    toc_float: yes
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r, echo = F}
+library(knitr)
+opts_chunk$set(echo=TRUE, 
+               warning=FALSE, message=FALSE, 
+               cache=FALSE)
+options(width = 100)
+
+opts_chunk$set(fig.width = 12, fig.height = 12) 
+```
+
+
+This code is for the results to the question: Does what caregivers are doing predict how much they engage with their target children? 
+
+
+
+### Load libraries and set theme
+```{r}
+library(tidyverse)
+library(Hmisc)
+library(GGally)
+library(ppcor)
+library(gridExtra)
+library(psych)
+library(sjPlot)
+library(stargazer)
+
+theme_set(theme_bw())
+```
+
+
+## Read in data
+```{r}
+# demographics
+demo_english <- read_csv("./data_demo_lena_transcripts/demo_english_ms.csv") %>% 
+  rename(id = ID, hi = HI24Final, momed = Momed) %>% 
+  dplyr::select(id, hi, momed) %>% 
+  mutate(id = as.character(id), 
+         language = "english")
+
+demo_spanish <- read_csv("./data_demo_lena_transcripts/demo_spanish_ms.csv") %>% 
+  rename(id = ID, hi = HI_18, momed = MomEd_25m) %>% 
+  dplyr::select(id, hi, momed) %>% 
+  mutate(id = as.character(id), 
+         language = "spanish")
+
+demo <- rbind(demo_english, demo_spanish)
+
+
+# freq
+# sum across segments, so there are only up to 4 data points per child (1 for each activity group)
+freq_reg <- read_csv("./data_demo_lena_transcripts/freq.csv") %>% 
+  filter(activity != "kwalods", 
+         speech == "all") %>% 
+  mutate(activity = recode(activity, "play" = "cc", "conv" = "cc", 
+                           "food" = "cc", "routines" = "cc", "gemods" = "non_tcds")) %>% 
+  mutate(id = factor(id), 
+         language = factor(language)) %>% 
+  group_by(id, activity, speaker) %>% # not grouping by segment number because looking across the whole tCDS hour
+  mutate(tokens_total_4act = sum(tokens), 
+         types_total_4act = sum(types), 
+         dur_min_4act = sum(dur_min)) %>% 
+  distinct(id, activity, language, speaker, tokens_total_4act, types_total_4act, dur_min_4act) %>% 
+  ungroup() %>% 
+  mutate(activity = factor(activity, levels = c("books", "cc", "ac", "non_tcds"))) 
+```
+
+
+## Create dfs for ADULTS and CHI
+```{r}
+# subset for adult and child
+freq_reg_adults <- freq_reg %>% 
+  filter(speaker == "ADULTS")
+
+freq_reg_child <- freq_reg %>% 
+  filter(speaker == "CHI")
+
+str(freq_reg_adults)
+str(freq_reg_child)
+```
+
+
+## Create tokens rate per hour - Children
+```{r}
+freq_hr_child <- read_csv("./data_demo_lena_transcripts/freq.csv") %>% 
+  dplyr::select(-X1) %>% 
+  filter(speech == "all", 
+         speaker == "CHI") %>% 
+  group_by(id) %>% 
+  mutate(tokens_sum_child = sum(tokens), 
+         dur_hr = sum(dur_min)/60, 
+         tokens_hr_child = tokens_sum_child/dur_hr) %>% 
+  distinct(id, language, tokens_hr_child) %>% 
+  ungroup() %>% 
+  mutate(id = as.character(id))
+```
+
+
+## Create wide df for regressions with 0s
+```{r}
+# freq adult
+freq_reg_adults_wide <- freq_reg_adults %>% 
+  ungroup() %>% 
+  group_by(id) %>% 
+  mutate(tokens_sum_adult = sum(tokens_total_4act), 
+         dur_hr = sum(dur_min_4act)/60, 
+         tokens_hr_adult = tokens_sum_adult/dur_hr) %>% 
+  full_join(freq_hr_child, by = c("id", "language")) %>% 
+  distinct(id, activity, language, dur_min_4act, tokens_hr_adult, tokens_hr_child) %>% 
+  spread(activity, dur_min_4act) %>% 
+  replace_na(list(books = 0, cc = 0, ac = 0, non_tcds = 0)) %>% 
+  mutate(br_group = ifelse(books == 0, 0, 1), 
+         br_group = as.factor(br_group))
+
+
+psych::describe(freq_reg_adults_wide$tokens_hr_adult)
+```
+
+
+## Descriptives
+```{r}
+# descriptives
+hist(freq_reg_adults_wide$books)
+hist(freq_reg_adults_wide$cc)
+hist(freq_reg_adults_wide$ac)
+hist(freq_reg_adults_wide$non_tcds)
+
+
+# difference between families who BR vs. non
+ggplot(freq_reg_adults_wide, aes(x = br_group, y = tokens_hr_adult)) + 
+  geom_boxplot() + 
+  geom_jitter(alpha = .5)
+
+# t-tests
+t.test(tokens_hr_adult ~ br_group, 
+       data = freq_reg_adults_wide, var.equal = TRUE)
+```
+
+
+## Regressions (Full sample) - books* + cc* + ac + non-tCDS
+```{r}
+# freq_reg_adults_wide_rmoutlier <- freq_reg_adults_wide %>% 
+#   filter(id != 20056 & id != 7412)
+# nrow(freq_reg_adults_wide_rmoutlier)
+
+# models with tokens
+m1 <- lm(tokens_hr_adult ~ tokens_hr_child, 
+         data = freq_reg_adults_wide)
+m2 <- lm(tokens_hr_adult ~ tokens_hr_child + language, 
+         data = freq_reg_adults_wide)
+m3 <- lm(tokens_hr_adult ~ tokens_hr_child + language + books,
+         data = freq_reg_adults_wide)
+m4 <- lm(tokens_hr_adult ~ tokens_hr_child + language + books + cc,
+         data = freq_reg_adults_wide)
+m5 <- lm(tokens_hr_adult ~ tokens_hr_child + language + books + cc + ac,
+         data = freq_reg_adults_wide)
+m6 <- lm(tokens_hr_adult ~ tokens_hr_child + language + books + cc + ac + non_tcds,
+         data = freq_reg_adults_wide)
+
+anova(m1, m2, m3, m4, m5, m6)
+summary(m4)
+
+
+# checking if language is a moderator
+m4 <- lm(tokens_hr_adult ~ tokens_hr_child + language + books + cc,
+         data = freq_reg_adults_wide)
+m4_intx1 <- lm(tokens_hr_adult ~ tokens_hr_child + (language * books) + cc,
+         data = freq_reg_adults_wide)
+m4_intx2 <- lm(tokens_hr_adult ~ tokens_hr_child + (language * books) + (language * cc),
+         data = freq_reg_adults_wide)
+
+anova(m4, m4_intx1, m4_intx2)
+summary(m4_intx1)
+
+
+
+# # check on potential outlier - removing these didn't change pattern of findings
+# # 20056 - possibly bc high densest hour; 7412 - less clear, but does have 3rd highest cc value
+# cooksd <- cooks.distance(m4)
+# View(cooksd)
+# influential <- as.numeric(names(cooksd)[(cooksd > 4*mean(cooksd, na.rm=T))])  # influential row numbers
+# inf_df <- head(freq_reg_adults_wide_rmoutlier[influential, ])  # influential observations
+# View(inf_df)
+
+
+# table
+stargazer(m1, m2, m3, m4, type = "text",
+         star.char = c(".","*","**","***"),
+         star.cutoffs = c(.1, .05, .01, .001),
+         notes = c(". p<0.1; * p<0.05; ** p<0.01; *** p<0.001"),
+         notes.append = F,
+         digits = 3,
+         dep.var.labels = c("Word Tokens in the Densest hour"),
+         covariate.labels=c("Child Tokens per Hour", "Language Group",
+                            "Book Sharing (min)",
+                            "Other-Child-Centered Activities (min)"))
+
+# diagnostics
+plot_model(m4, type = "diag")
+```
+
+
+## Regressions (Full sample) - cc + books* + ac + non-tCDS
+```{r}
+# models with tokens and cc before book sharing - cc doesn't add before book sharing
+m3.cc <- lm(tokens_hr_adult ~ tokens_hr_child + language + cc,
+         data = freq_reg_adults_wide)
+
+anova(m1, m2, m3.cc, m4, m5, m6)
+summary(m3.cc)
+summary(m4)
+summary(m6)
+```
+
+
+
+## Regressions (Full sample) - books* + cc* + non-tCDS + ac; AC does not add above non-tCDS
+```{r}
+m5.ods <- lm(tokens_hr_adult ~ tokens_hr_child + language + books + cc + non_tcds,
+         data = freq_reg_adults_wide)
+
+anova(m1, m2, m3, m4, m5.ods, m6)
+```
+
+
+
+## Regressions (BR only families) - books* + cc + ac + non-tCDS; same if switch cc and books
+```{r}
+# models with ONLY BR families
+bronly_tokens <- freq_reg_adults_wide %>% 
+  filter(br_group == 1)
+
+
+# regressions
+m1.bronly <- lm(tokens_hr_adult ~ tokens_hr_child, 
+         data = bronly_tokens)
+m2.bronly <- lm(tokens_hr_adult ~ tokens_hr_child + language,
+         data = bronly_tokens)
+m3.bronly <- lm(tokens_hr_adult ~ tokens_hr_child + language + books,
+         data = bronly_tokens)
+m4.bronly <- lm(tokens_hr_adult ~ tokens_hr_child + language + books + cc,
+         data = bronly_tokens)
+m5.bronly <- lm(tokens_hr_adult ~ tokens_hr_child + language + books + cc + ac,
+         data = bronly_tokens)
+m6.bronly <- lm(tokens_hr_adult ~ tokens_hr_child + language + books + cc + ac + non_tcds,
+         data = bronly_tokens)
+
+anova(m1.bronly, m2.bronly, m3.bronly, m4.bronly, m5.bronly, m6.bronly)
+summary(m3.bronly)
+
+
+
+# checking if language is a moderator
+m3.bronly_intx <- lm(tokens_hr_adult ~ tokens_hr_child + (language * books),
+         data = bronly_tokens)
+anova(m3.bronly, m3.bronly_intx)
+
+
+# table
+stargazer(m1.bronly, m2.bronly, m3.bronly, type = "text",
+         star.char = c(".","*","**","***"),
+         star.cutoffs = c(.1, .05, .01, .001),
+         notes = c(". p<0.1; * p<0.05; ** p<0.01; *** p<0.001"),
+         notes.append = F,
+         digits = 3,
+         dep.var.labels = c("Word Tokens in the Densest hour"),
+         covariate.labels=c("Child Tokens per Hour", "Language Group",
+                            "Book Sharing (min)"))
+
+
+# plot model
+plot_model(m3.bronly, type = "pred", terms = c("books"),
+           show.data = T,
+           dot.size = 4, 
+           colors = "darkviolet") +
+  aes(color = group) + 
+  font_size(axis_title.x = 25, axis_title.y = 25, labels.x = 18, labels.y = 18) + 
+  labs(x = "Book Sharing Duration (min)", y = "Caregiver\nTotal Word Tokens\n(Densest tCDS Hour)", title = "") +
+  theme(axis.title.y = element_text(angle = 0, vjust = 0.5), 
+        legend.position = "none")
+ggsave("./figures/balloon_bronly.pdf", width = 12, height = 8, units = "in", dpi = 300)
+
+
+
+
+# model with ONLY BR families and cc first
+m3.bronly.cc <- lm(tokens_hr_adult ~ tokens_hr_child + language + cc,
+         data = bronly_tokens)
+
+anova(m1.bronly, m2.bronly, m3.bronly.cc, m4.bronly, m5.bronly, m6.bronly)
+
+
+# model with ONLY BR families and non_tCDS above ac
+m5.bronly.ods <- lm(tokens_hr_adult ~ tokens_hr_child + language + books + cc + non_tcds,
+         data = bronly_tokens)
+
+anova(m1.bronly, m2.bronly, m3.bronly, m4.bronly, m5.bronly.ods, m6.bronly)
+
+
+
+# diagnostics
+plot_model(m3.bronly, type = "diag")
+```
+
+
+
+## Regressions (NON BR only families) - cc* + ac + gemods; same if switch cc and books
+```{r}
+# models with NON BR families
+nonbr_tokens <- freq_reg_adults_wide %>% 
+  filter(br_group == 0)
+
+# regressions
+m1.nonbr <- lm(tokens_hr_adult ~ tokens_hr_child, 
+         data = nonbr_tokens)
+m2.nonbr <- lm(tokens_hr_adult ~ tokens_hr_child + language,
+         data = nonbr_tokens)
+m3.nonbr <- lm(tokens_hr_adult ~ tokens_hr_child + language + cc,
+         data = nonbr_tokens)
+m4.nonbr <- lm(tokens_hr_adult ~ tokens_hr_child + language + cc + ac,
+         data = nonbr_tokens)
+m5.nonbr <- lm(tokens_hr_adult ~ tokens_hr_child + language + cc + ac + non_tcds,
+         data = nonbr_tokens)
+
+anova(m1.nonbr, m2.nonbr, m3.nonbr, m4.nonbr, m5.nonbr)
+summary(m3.nonbr)
+summary(m4.nonbr)
+
+
+# checking if language is a moderator
+m3.nonbr_intx <- lm(tokens_hr_adult ~ tokens_hr_child + (language * cc),
+         data = nonbr_tokens)
+anova(m3.nonbr, m3.nonbr_intx)
+
+
+# table
+stargazer(m1.nonbr, m2.nonbr, m3.nonbr, m4.nonbr, type = "text",
+         star.char = c(".","*","**","***"),
+         star.cutoffs = c(.1, .05, .01, .001),
+         notes = c(". p<0.1; * p<0.05; ** p<0.01; *** p<0.001"),
+         notes.append = F,
+         digits = 3,
+         dep.var.labels = c("Word Tokens in the Densest hour"),
+         covariate.labels=c("Child Tokens per Hour", "Language Group",
+                            "Other Child-Centered Activities (min)", 
+                            "Adult-Centered Activities (min)"))
+
+
+
+# plot model
+plot_model(m3.nonbr, type = "pred", terms = c("cc"),
+           show.data = T,
+           dot.size = 4,
+           colors = "firebrick1") +
+  aes(color = group) + 
+  font_size(axis_title.x = 25, axis_title.y = 25, labels.x = 18, labels.y = 18) + 
+  labs(x = "Other Child-Centered Duration (min)", y = "Caregiver\nTotal Word Tokens\n(Densest tCDS Hour)", title = "") +
+  theme(axis.title.y = element_text(angle = 0, vjust = 0.5), 
+        legend.position = "none")
+ggsave("./figures/balloon_nonbronly.pdf", width = 12, height = 8, units = "in", dpi = 300)
+
+
+
+# model with NON BR families and ac above cc; p = .06
+m3.nonbr.ac <- lm(tokens_hr_adult ~ tokens_hr_child + language + ac,
+         data = nonbr_tokens)
+
+anova(m1.nonbr, m2.nonbr, m3.nonbr.ac, m4.nonbr, m5.nonbr)
+summary(m4.nonbr)
+
+
+
+# model with NON BR families and gemods above ac
+m4.nonbr.ods <- lm(tokens_hr_adult ~ tokens_hr_child + language + cc + non_tcds,
+         data = nonbr_tokens)
+
+anova(m1.nonbr, m2.nonbr, m3.nonbr, m4.nonbr.ods, m5.nonbr)
+
+
+# correlations
+ggplot(nonbr_tokens, aes(cc, ac, color = language)) + 
+  geom_point() + 
+  geom_smooth(method = "lm")
+
+cor.test(nonbr_tokens$cc, nonbr_tokens$ac)
+
+
+# diagnostics
+plot_model(m3.nonbr, type = "diag")
+
+```
+

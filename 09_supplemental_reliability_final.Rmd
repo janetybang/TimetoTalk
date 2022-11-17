@@ -1,0 +1,534 @@
+---
+title: "Interrater Reliability"
+author: "Janet Bang"
+date: "November 17, 2022"
+output:
+  html_document: 
+   toc: true
+   toc_float: true
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+This is code of the inter-rater reliability between first and second coders when determining 1) the tCDS activity of the caregiver-child interaction and 2) the duration of the tCDS activity. 
+
+
+
+## Load libraries
+```{r}
+library(tidyverse)
+library(irr)
+library(psych)
+library(gridExtra)
+
+theme_set(theme_bw())
+```
+
+
+
+## Read in data
+```{r}
+ir_en_6categ <- read_csv("./data_reliability/ir_en_6categ_wide.csv")
+ir_sp_6categ <- read_csv("./data_reliability/ir_sp_6categ_wide.csv")
+```
+
+
+
+## See number of codes for each coder
+```{r}
+# english
+ir_en_6categ %>%
+  select(-coder2_ant) %>% 
+  filter(coder1_ant != "no_code") %>% 
+  nrow()
+
+ir_en_6categ %>%
+  select(-coder1_ant) %>% 
+  filter(coder2_ant != "no_code") %>% 
+  nrow()
+
+
+
+# spanish
+ir_sp_6categ %>%
+  select(-coder2_ant) %>% 
+  filter(coder1_ant != "no_code") %>% 
+  nrow()
+
+ir_sp_6categ %>%
+  select(-coder1_ant) %>% 
+  filter(coder2_ant != "no_code") %>% 
+  nrow()
+```
+
+
+
+## Create dfs that use coder1 as a reference (excluding rows where coder1 = "no_code")
+```{r}
+# this creates a warning message that we can ignore 
+# Warning message:
+#Problem with `mutate()` input `coder2_dur`.
+#ℹ NAs introduced by coercion
+#ℹ Input `coder2_dur` is `as.numeric(coder2_dur)`. 
+
+ir_en_6categ_ref <- ir_en_6categ %>%
+  filter(coder1_ant != "no_code") %>% 
+  mutate(match = ifelse(coder1_ant == coder2_ant, "match", "no_match")) %>% 
+  mutate(coder1_dur = as.numeric(coder1_dur), 
+         coder2_dur = as.numeric(coder2_dur)) %>% 
+  mutate(coder1_dur = replace_na(coder1_dur, 0),
+         coder2_dur = replace_na(coder2_dur, 0)) 
+
+ir_sp_6categ_ref <- ir_sp_6categ %>%
+  filter(coder1_ant != "no_code") %>% 
+  mutate(match = ifelse(coder1_ant == coder2_ant, "match", "no_match")) %>% 
+  mutate(coder1_dur = as.numeric(coder1_dur), 
+         coder2_dur = as.numeric(coder2_dur)) %>% 
+  mutate(coder1_dur = replace_na(coder1_dur, 0),
+         coder2_dur = replace_na(coder2_dur, 0))
+```
+
+
+## See number of removed codes for coder1
+```{r}
+ir_en_6categ %>%
+  filter(coder1_ant == "no_code") %>% 
+  nrow()
+
+ir_sp_6categ %>%
+  filter(coder1_ant == "no_code") %>% 
+  nrow()
+```
+
+
+
+
+## Proportion of matched codes between coder1 and coder2 - Overall
+```{r}
+# english
+match_en <- ir_en_6categ_ref %>% 
+  filter(match == "match")
+
+nrow(match_en)
+nrow(ir_en_6categ_ref)
+nrow(match_en) / nrow(ir_en_6categ_ref)
+
+
+# spanish
+match_sp <- ir_sp_6categ_ref %>% 
+  filter(match == "match")
+
+nrow(match_sp)
+nrow(ir_sp_6categ_ref)
+nrow(match_sp) / nrow(ir_sp_6categ_ref)
+```
+
+
+
+## Proportion of matched codes between coder1 and coder2 - English per category
+```{r}
+# english
+# books
+match_books_en <- ir_en_6categ_ref %>% 
+  filter(coder1_ant == "books" & match == "match")
+
+books_en <- ir_en_6categ_ref %>% 
+  filter(coder1_ant == "books")
+
+nrow(match_books_en)
+nrow(books_en)
+nrow(match_books_en) / nrow(books_en)
+
+# play
+match_play_en <- ir_en_6categ_ref %>% 
+  filter(coder1_ant == "play" & match == "match")
+
+play_en <- ir_en_6categ_ref %>% 
+  filter(coder1_ant == "play")
+
+nrow(match_play_en)
+nrow(play_en)
+nrow(match_play_en) / nrow(play_en)
+
+
+# food
+match_food_en <- ir_en_6categ_ref %>% 
+  filter(coder1_ant == "food" & match == "match")
+
+food_en <- ir_en_6categ_ref %>% 
+  filter(coder1_ant == "food")
+
+nrow(match_food_en) 
+nrow(food_en)
+nrow(match_food_en) / nrow(food_en)
+
+
+# routines
+match_routines_en <- ir_en_6categ_ref %>% 
+  filter(coder1_ant == "routines" & match == "match")
+
+routines_en <- ir_en_6categ_ref %>% 
+  filter(coder1_ant == "routines")
+
+nrow(match_routines_en)
+nrow(routines_en)
+nrow(match_routines_en) / nrow(routines_en)
+
+
+# unstructured conversation
+match_conv_en <- ir_en_6categ_ref %>% 
+  filter(coder1_ant == "conv" & match == "match")
+
+conv_en <- ir_en_6categ_ref %>% 
+  filter(coder1_ant == "conv")
+
+nrow(match_conv_en)
+nrow(conv_en)
+nrow(match_conv_en) / nrow(conv_en)
+
+
+# adult-centered interaction
+match_adultcent_en <- ir_en_6categ_ref %>% 
+  filter(coder1_ant == "ac" & match == "match")
+
+adultcent_en <- ir_en_6categ_ref %>% 
+  filter(coder1_ant == "ac")
+
+nrow(match_adultcent_en)
+nrow(adultcent_en)
+nrow(match_adultcent_en) / nrow(adultcent_en)
+```
+
+
+## Proportion of matched codes between coder1 and coder2 - Spanish per category
+```{r}
+# spanish
+# books
+match_books_sp <- ir_sp_6categ_ref %>% 
+  filter(coder1_ant == "books" & match == "match")
+
+books_sp <- ir_sp_6categ_ref %>% 
+  filter(coder1_ant == "books")
+
+nrow(match_books_sp)
+nrow(books_sp)
+nrow(match_books_sp) / nrow(books_sp)
+
+
+# play
+match_play_sp <- ir_sp_6categ_ref %>% 
+  filter(coder1_ant == "play" & match == "match")
+
+play_sp <- ir_sp_6categ_ref %>% 
+  filter(coder1_ant == "play")
+
+nrow(match_play_sp)
+nrow(play_sp)
+nrow(match_play_sp) / nrow(play_sp)
+
+
+# food
+match_food_sp <- ir_sp_6categ_ref %>% 
+  filter(coder1_ant == "food" & match == "match")
+
+food_sp <- ir_sp_6categ_ref %>% 
+  filter(coder1_ant == "food")
+
+nrow(match_food_sp)
+nrow(food_sp)
+nrow(match_food_sp) / nrow(food_sp)
+
+
+# routines
+match_routines_sp <- ir_sp_6categ_ref %>% 
+  filter(coder1_ant == "routines" & match == "match")
+
+routines_sp <- ir_sp_6categ_ref %>% 
+  filter(coder1_ant == "routines")
+
+nrow(match_routines_sp)
+nrow(routines_sp)
+nrow(match_routines_sp) / nrow(routines_sp)
+
+
+# unstructured conversation
+match_conv_sp <- ir_sp_6categ_ref %>% 
+  filter(coder1_ant == "conv" & match == "match")
+
+conv_sp <- ir_sp_6categ_ref %>% 
+  filter(coder1_ant == "conv")
+
+nrow(match_conv_sp)
+nrow(conv_sp)
+nrow(match_conv_sp) / nrow(conv_sp)
+
+
+# adult-centered interaction
+match_adultcent_sp <- ir_sp_6categ_ref %>% 
+  filter(coder1_ant == "ac" & match == "match")
+
+adultcent_sp <- ir_sp_6categ_ref %>% 
+  filter(coder1_ant == "ac")
+
+nrow(match_adultcent_sp)
+nrow(adultcent_sp)
+nrow(match_adultcent_sp) / nrow(adultcent_sp)
+```
+
+
+## Kappa
+```{r}
+# we do not want weighted kappa; this takes into account disagreements, but weighted kappa is more relevant when data are rank ordered
+ir_en_6categ_kappa <- ir_en_6categ_ref %>% 
+  select(c(coder1_ant, coder2_ant))
+
+cohen.kappa(as.matrix(ir_en_6categ_kappa))
+kappa2(ir_en_6categ_kappa)
+
+
+ir_sp_6categ_kappa <- ir_sp_6categ_ref %>% 
+  select(c(coder1_ant, coder2_ant))
+
+cohen.kappa(as.matrix(ir_sp_6categ_kappa))
+kappa2(ir_sp_6categ_kappa)
+
+```
+
+
+
+### ICCs
+## Create separate dataframes per activity
+```{r}
+# english
+ir_en_books <- ir_en_6categ_ref %>%
+  filter(activity_both == "books")
+
+ir_en_play <- ir_en_6categ_ref %>%
+  filter(activity_both == "play")
+
+ir_en_food <- ir_en_6categ_ref %>%
+  filter(activity_both == "food")
+
+ir_en_routines <- ir_en_6categ_ref %>%
+  filter(activity_both == "routines")
+
+ir_en_convo <- ir_en_6categ_ref %>%
+  filter(activity_both == "conv")
+
+ir_en_ac <- ir_en_6categ_ref %>%
+  filter(activity_both == "ac")
+
+
+
+# spanish
+ir_sp_books <- ir_sp_6categ_ref %>%
+  filter(activity_both == "books")
+
+ir_sp_play <- ir_sp_6categ_ref %>%
+  filter(activity_both == "play")
+
+ir_sp_food <- ir_sp_6categ_ref %>%
+  filter(activity_both == "food")
+
+ir_sp_routines <- ir_sp_6categ_ref %>%
+  filter(activity_both == "routines")
+
+ir_sp_convo <- ir_sp_6categ_ref %>%
+  filter(activity_both == "conv")
+
+ir_sp_ac <- ir_sp_6categ_ref %>%
+  filter(activity_both == "ac")
+```
+
+
+### Check the number of rows by first coder
+```{r}
+ir_en_6categ_ref %>% 
+  dplyr::select(id, coder1_ant) %>% 
+  group_by(coder1_ant) %>% 
+  count(coder1_ant) %>% 
+  ungroup() %>% 
+  mutate(prop = n/sum(n))
+
+
+ir_sp_6categ_ref %>% 
+  dplyr::select(id, coder1_ant) %>% 
+  group_by(coder1_ant) %>% 
+  count(coder1_ant) %>% 
+  ungroup() %>% 
+  mutate(prop = n/sum(n))
+```
+
+
+
+### ICCs
+```{r}
+# model = the design is not fully crossed since not all coders coded all subject, so we will use a one-way model
+# type = agreement bc we care about the absolute value, not rank order)
+# unit = default is individual, which is used when a subset of subjects has multiple raters and reliability of rating is meant to generalize to subjects rated by one coder
+
+
+# english
+books_en <- ir_en_books %>% 
+  filter(match == "match") %>%
+  select(c(coder1_dur, coder2_dur))
+icc(books_en, model = "oneway", type = "agreement")
+
+play_en <- ir_en_play %>% 
+  filter(match == "match") %>%
+  select(c(coder1_dur, coder2_dur))
+icc(play_en, model = "oneway", type = "agreement")
+
+food_en <- ir_en_food %>% 
+  filter(match == "match") %>%
+  select(c(coder1_dur, coder2_dur))
+icc(food_en, model = "oneway", type = "agreement")
+
+routines_en <- ir_en_routines %>% 
+  # filter(id != 20113) %>% # this participant has coder1_dur dur at 21s and coder2_dur dur at 181s
+  filter(match == "match") %>%
+  select(c(coder1_dur, coder2_dur))
+icc(routines_en, model = "oneway", type = "agreement")
+
+convo_en <- ir_en_convo %>% 
+  filter(match == "match") %>%
+  select(c(coder1_dur, coder2_dur))
+icc(convo_en, model = "oneway", type = "agreement")
+
+ac_en <- ir_en_ac %>% 
+  filter(match == "match") %>%
+  select(c(coder1_dur, coder2_dur))
+icc(ac_en, model = "oneway", type = "agreement")
+
+
+
+
+# spanish
+books_sp <- ir_sp_books %>% 
+  filter(match == "match") %>%
+  select(c(coder1_dur, coder2_dur))
+icc(books_sp, model = "oneway", type = "agreement")
+
+play_sp <- ir_sp_play %>% 
+  filter(match == "match") %>%
+  select(c(coder1_dur, coder2_dur))
+icc(play_sp, model = "oneway", type = "agreement")
+
+food_sp <- ir_sp_food %>% 
+  filter(match == "match") %>%
+  select(c(coder1_dur, coder2_dur))
+icc(food_sp, model = "oneway", type = "agreement")
+
+routines_sp <- ir_sp_routines %>% 
+  filter(match == "match") %>%
+  select(c(coder1_dur, coder2_dur))
+icc(routines_sp, model = "oneway", type = "agreement")
+
+convo_sp <- ir_sp_convo %>% 
+  filter(match == "match") %>%
+  select(c(coder1_dur, coder2_dur))
+icc(convo_sp, model = "oneway", type = "agreement")
+
+ac_sp <- ir_sp_ac %>% 
+  filter(match == "match") %>%
+  select(c(coder1_dur, coder2_dur))
+icc(ac_sp, model = "oneway", type = "agreement")
+
+```
+
+
+## Correlations - not corrected for chance agreement
+```{r}
+cor.test(books_en$coder1_dur, books_en$coder2_dur)
+cor.test(play_en$coder1_dur, play_en$coder2_dur)
+cor.test(food_en$coder1_dur, food_en$coder2_dur)
+cor.test(routines_en$coder1_dur, routines_en$coder2_dur)
+cor.test(convo_en$coder1_dur, convo_en$coder2_dur)
+cor.test(ac_en$coder1_dur, ac_en$coder2_dur)
+
+
+cor.test(books_sp$coder1_dur, books_sp$coder2_dur)
+cor.test(play_sp$coder1_dur, play_sp$coder2_dur)
+cor.test(food_sp$coder1_dur, food_sp$coder2_dur)
+cor.test(routines_sp$coder1_dur, routines_sp$coder2_dur)
+cor.test(convo_sp$coder1_dur, convo_sp$coder2_dur)
+cor.test(ac_sp$coder1_dur, ac_sp$coder2_dur)
+```
+
+
+
+### Plots
+```{r}
+en1 <- ggplot(ir_en_books, aes(coder1_dur, coder2_dur)) + 
+  geom_point() + 
+  geom_smooth(method = "lm") + 
+  theme(text = element_text(size = 18)) + 
+  labs(x = "", y = "")
+en2 <- ggplot(ir_en_play, aes(coder1_dur, coder2_dur)) + 
+  geom_point() + 
+  geom_smooth(method = "lm") + 
+  theme(text = element_text(size = 18)) + 
+  labs(x = "", y = "")
+en3 <- ggplot(ir_en_food, aes(coder1_dur, coder2_dur)) + 
+  geom_point() + 
+  geom_smooth(method = "lm") + 
+  theme(text = element_text(size = 18)) + 
+  labs(x = "", y = "")
+en4 <- ggplot(ir_en_routines, aes(coder1_dur, coder2_dur)) + 
+  geom_point() + 
+  geom_smooth(method = "lm") + 
+  theme(text = element_text(size = 18)) + 
+  labs(x = "", y = "")
+en5 <- ggplot(ir_en_convo, aes(coder1_dur, coder2_dur)) + 
+  geom_point() + 
+  geom_smooth(method = "lm") + 
+  theme(text = element_text(size = 18)) + 
+  labs(x = "", y = "")
+en6 <- ggplot(ir_en_ac, aes(coder1_dur, coder2_dur)) + 
+  geom_point() + 
+  geom_smooth(method = "lm") + 
+  theme(text = element_text(size = 18)) + 
+  labs(x = "", y = "")
+
+
+sp1 <- ggplot(ir_sp_books, aes(coder1_dur, coder2_dur)) + 
+  geom_point() + 
+  geom_smooth(method = "lm") + 
+  theme(text = element_text(size = 18)) + 
+  labs(x = "", y = "")
+sp2 <- ggplot(ir_sp_play, aes(coder1_dur, coder2_dur)) + 
+  geom_point() + 
+  geom_smooth(method = "lm") + 
+  theme(text = element_text(size = 18)) + 
+  labs(x = "", y = "")
+sp3 <- ggplot(ir_sp_food, aes(coder1_dur, coder2_dur)) + 
+  geom_point() + 
+  geom_smooth(method = "lm") + 
+  theme(text = element_text(size = 18)) + 
+  labs(x = "", y = "")
+sp4 <- ggplot(ir_sp_routines, aes(coder1_dur, coder2_dur)) + 
+  geom_point() + 
+  geom_smooth(method = "lm") + 
+  theme(text = element_text(size = 18)) + 
+  labs(x = "", y = "")
+sp5 <- ggplot(ir_sp_convo, aes(coder1_dur, coder2_dur)) + 
+  geom_point() + 
+  geom_smooth(method = "lm") + 
+  theme(text = element_text(size = 18)) + 
+  labs(x = "", y = "")
+sp6 <- ggplot(ir_sp_ac, aes(coder1_dur, coder2_dur)) + 
+  geom_point() + 
+  geom_smooth(method = "lm") + 
+  theme(text = element_text(size = 18)) + 
+  labs(x = "", y = "")
+
+pdf("./figures/corr_reliability.pdf", width = 20, height = 9) # Open a new pdf file
+grid.arrange(en1, en2, en3, en4, en5, en6, 
+             sp1, sp2, sp3, sp4, sp5, sp6, ncol = 6) # Write the grid.arrange in the file
+dev.off()
+```

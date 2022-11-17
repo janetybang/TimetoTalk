@@ -1,0 +1,538 @@
+---
+title: "Descriptives of Caregiver Speech - Transcription data"
+author: "Janet Bang"
+date: "November 17, 2022"
+output:
+  html_document: 
+    toc: yes
+    toc_float: yes
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r, echo = F}
+library(knitr)
+opts_chunk$set(echo=TRUE, 
+               warning=FALSE, message=FALSE, 
+               cache=FALSE)
+options(width = 100)
+
+opts_chunk$set(fig.width = 12, fig.height = 12) 
+```
+
+
+This code is for the caregiver speech measures from transcripts used in the manuscript. 
+
+
+### Load libraries and set theme
+```{r}
+library(tidyverse)
+library(Hmisc)
+library(GGally)
+library(ppcor)
+library(gridExtra)
+library(psych)
+
+# https://github.com/ggobi/ggally/issues/139
+my_custom_smooth <- function(data, mapping, ...) {
+  ggplot(data = data, mapping = mapping) +
+    geom_point(alpha = .4, color = I("black")) + 
+    geom_smooth(method = "lm", color = I("blue"), ...)
+}
+
+theme_set(theme_bw())
+```
+
+
+## Read in data
+```{r}
+# NOTE about periods of non-tCDCS
+# gemods refers to when there are designated start/end periods of other-directed speech (ODS); this was captured using gems (@G) using CHAT conventions
+# kwalods refers to when ODS was transcribed at an utterance-level within a tCDS activity period between caregiver and child (e.g., other-directed speech in the background); this was captured per utterances using CHAT postcodes
+## for tokens/min and types/min, we do not include ODS that occurred within a period of tCDS, because durations were captured by activity and not by utterance
+## for mlu, we include all ODS across gemods and kwalods
+
+
+# NOTE about speech == "all"
+# "speech" includes two levels: all, spont
+# all = refers to all speech by caregivers
+# spont = refers to only speech by caregivers that was considered spontaneous rather than recited (e.g., reading book text, singing memorized common songs like itsy bitsy spider); therefore, 'spont' is a subset of 'all'
+
+# freq
+freq <- read_csv("./data_demo_lena_transcripts/freq.csv") %>% 
+  dplyr::select(-X1) %>% 
+  filter(activity != "kwalods") %>% 
+  filter(speech == "all") %>% 
+  mutate(activity = factor(activity, levels = c("books", "play", "food", 
+                                                "routines", "conv", "ac", 
+                                                "gemods")), 
+         id = factor(id), 
+         language = factor(language), 
+         speech = factor(speech))
+
+
+# mlu
+mlu <- read_csv("./data_demo_lena_transcripts/mlu.csv") %>% 
+  mutate(activity = factor(activity, levels = c("books", "play", "food", 
+                                                "routines", "conv", "ac", "ods")), 
+         id = factor(id), 
+         language = factor(language), 
+         speech = factor(speech)) %>% 
+  filter(speech == "all")
+
+
+# chip
+# this includes only caregivers, therefore there is no speaker column
+# we exclude periods of ODS because this is about responsiveness to the child during periods of tCDS
+chip <- read_csv("./data_demo_lena_transcripts/chip.csv") %>% 
+  filter(activity != "ods") %>% 
+  mutate(activity = factor(activity, levels = c("books", "play", "food", 
+                                                "routines", "conv", "ac")), 
+         id = factor(id), 
+         language = factor(language)) 
+
+str(freq)
+str(mlu)
+str(chip)
+```
+
+
+
+## Create dfs for ADULTS
+```{r}
+# FREQ
+freq_adult <- freq %>% 
+  filter(speaker == "ADULTS")
+
+# MLU
+mlu_adult <- mlu %>% 
+  filter(speaker == "ADULTS")
+
+```
+
+
+
+
+# FREQ - Boxplots and descriptives for ADULTS
+## TOKENS (raw)
+
+
+Freq (tokens, types)
+
+* excluded non-target children (NTC)
+* excluded overlapping ODS during CDS periods
+* averaged across all adult speakers
+* if an activity was not present, we did not include it (i.e., we did not impute any values to create complete cases)
+* 0 values are included when the individual does not speak though we know they are present in the activity
+
+
+```{r}
+# relabel for plots
+freq_adult <- freq_adult %>% 
+  mutate(activity = recode(activity, "conv" = "unst. conv.", "ac" = "adult-centered",
+                                     "gemods" = "non_tcds"), 
+         language = recode(language, "English" = "english", "Spanish" = "spanish"))
+
+
+# plot for all speech
+ggplot(freq_adult, aes(activity, tokens, fill = activity)) + 
+  geom_boxplot() + 
+  geom_jitter(alpha = .2) + 
+  scale_fill_manual(values=c("darkviolet", "firebrick1", "green2", "dodgerblue1", "darkgoldenrod1", "darkgrey", "black")) + 
+  facet_wrap(~ language, ncol = 1) + 
+  theme(legend.position= "none") +
+  theme(text = element_text(size = 35)) +
+  theme(axis.text.x = element_text(angle = 20, hjust = .7)) + 
+  labs(x = "", y = "")
+
+
+# summarize data per participant and activity (all speech only)
+freq_adult_act <- freq_adult %>% 
+  group_by(id, activity) %>% 
+  mutate(tokens_act = mean(tokens), 
+         types_act = mean(types)) %>% 
+  distinct(id, language, activity, tokens_act, types_act)
+
+freq_adult_act_en <- freq_adult_act %>% filter(language == "english")
+freq_adult_act_sp <- freq_adult_act %>% filter(language == "spanish")
+
+
+
+# descriptives
+describeBy(freq_adult_act_en$tokens_act, freq_adult_act_en$activity, mat = T, fast = T)
+
+freq_adult_en_minmax_tokens_raw <- freq_adult %>% 
+  filter(language == "english") %>% 
+  group_by(activity, language) %>% 
+  mutate(min = min(tokens, na.rm = T), 
+         max = max(tokens, na.rm = T)) %>% 
+  distinct(activity, min, max)
+
+freq_adult_en_minmax_tokens_raw
+
+describeBy(freq_adult_act_sp$tokens_act, freq_adult_act_sp$activity, mat = T, fast = T)
+
+freq_adult_sp_minmax_tokens_raw <- freq_adult %>% 
+  filter(language == "spanish") %>% 
+  group_by(activity, language) %>% 
+  mutate(min = min(tokens, na.rm = T), 
+         max = max(tokens, na.rm = T)) %>% 
+  distinct(activity, min, max)
+
+freq_adult_sp_minmax_tokens_raw
+
+```
+
+
+
+## TOKENS (rate per min)
+```{r}
+freq_adult <- freq_adult %>% 
+  mutate(language = recode(language, "english" = "English", "spanish" = "Spanish"))
+
+
+# plot for all speech
+ggplot(freq_adult, aes(activity, tokens_permin, fill = activity)) + 
+  theme_classic() +
+  geom_boxplot() + 
+  geom_jitter(alpha = .3) + 
+  scale_fill_manual(values=c("darkviolet", "firebrick1", "green2", "dodgerblue1", "darkgoldenrod1", "darkgrey", "black")) + 
+  facet_wrap(~ language) + 
+  theme(legend.position= "none") +
+  theme(text = element_text(size = 35)) +
+  theme(axis.text.x = element_text(angle = 20, hjust = .7)) + 
+  labs(x = "", y = "Tokens Rate") + 
+  theme(panel.spacing = unit(4, "lines"))
+ggsave("./figures/boxplot_tokens_rate2.pdf", dpi = 300, width = 18, height = 8, units = "in")
+
+
+# summarize data per participant and activity (all speech only)
+freq_adult_act_permin <- freq_adult %>% 
+  group_by(id, activity) %>% 
+  mutate(tokens_permin_act = mean(tokens_permin), 
+         types_permin_act = mean(types_permin)) %>% 
+  distinct(id, language, activity, tokens_permin_act, types_permin_act)
+
+freq_adult_act_permin_en <- freq_adult_act_permin %>% filter(language == "English")
+freq_adult_act_permin_sp <- freq_adult_act_permin %>% filter(language == "Spanish")
+
+# descriptives
+describeBy(freq_adult_act_permin_en$tokens_permin_act, freq_adult_act_permin_en$activity, mat = T, fast = T)
+
+freq_adult_en_minmax_tokens_rate <- freq_adult %>% 
+  filter(language == "English") %>% 
+  group_by(activity, language) %>% 
+  mutate(min = min(tokens_permin, na.rm = T), 
+         max = max(tokens_permin, na.rm = T)) %>% 
+  distinct(activity, min, max)
+
+freq_adult_en_minmax_tokens_rate
+
+describeBy(freq_adult_act_permin_sp$tokens_permin_act, freq_adult_act_permin_sp$activity, mat = T, fast = T)
+
+freq_adult_sp_minmax_tokens_rate <- freq_adult %>% 
+  filter(language == "Spanish") %>% 
+  group_by(activity, language) %>% 
+  mutate(min = min(tokens_permin, na.rm = T), 
+         max = max(tokens_permin, na.rm = T)) %>% 
+  distinct(activity, min, max)
+
+freq_adult_sp_minmax_tokens_rate
+```
+
+
+
+## TYPES (raw)
+```{r}
+# df for just all speech
+ggplot(freq_adult, aes(activity, types, fill = activity)) +
+  geom_boxplot() + 
+  geom_jitter(alpha = .2) + 
+  scale_fill_manual(values=c("darkviolet", "firebrick1", "green2", "dodgerblue1", "darkgoldenrod1", "darkgrey", "black")) + 
+  facet_wrap(~ language) + 
+  theme(legend.position= "none") +
+  theme(text = element_text(size = 35)) +
+  theme(axis.text.x = element_text(angle = 20, hjust = .7)) + 
+  labs(x = "", y = "")
+
+
+# descriptives
+describeBy(freq_adult_act_en$types_act, freq_adult_act_en$activity, mat = T, fast = T)
+
+freq_adult_en_minmax_types_raw <- freq_adult %>% 
+  filter(language == "English") %>% 
+  group_by(activity, language) %>% 
+  mutate(min = min(types, na.rm = T), 
+         max = max(types, na.rm = T)) %>% 
+  distinct(activity, min, max)
+
+freq_adult_en_minmax_types_raw
+
+
+
+describeBy(freq_adult_act_sp$types_act, freq_adult_act_sp$activity, mat = T, fast = T)
+
+freq_adult_sp_minmax_types_raw <- freq_adult %>% 
+  filter(language == "Spanish") %>% 
+  group_by(activity, language) %>% 
+  mutate(min = min(types, na.rm = T), 
+         max = max(types, na.rm = T)) %>% 
+  distinct(activity, min, max)
+
+freq_adult_sp_minmax_types_raw
+
+```
+
+
+
+## TYPES (rate per min)
+```{r}
+# plot for all speech
+ggplot(freq_adult, aes(activity, types_permin, fill = activity)) + 
+  theme_classic() +
+  geom_boxplot() + 
+  geom_jitter(alpha = .3) + 
+  scale_fill_manual(values=c("darkviolet", "firebrick1", "green2", "dodgerblue1", "darkgoldenrod1", "darkgrey", "black")) + 
+  facet_wrap(~ language) + 
+  theme(legend.position= "none") +
+  theme(text = element_text(size = 35)) +
+  theme(axis.text.x = element_text(angle = 20, hjust = .7)) + 
+  labs(x = "", y = "Types Rate")
+ggsave("./figures/boxplot_types_rate2.pdf", dpi = 300, width = 18, height = 8, units = "in")
+
+
+# descriptives
+describeBy(freq_adult_act_permin_en$types_permin_act, freq_adult_act_permin_en$activity, mat = T, fast = T)
+
+freq_adult_en_minmax_types_rate <- freq_adult %>% 
+  filter(language == "English") %>% 
+  group_by(activity, language) %>% 
+  mutate(min = min(types_permin, na.rm = T), 
+         max = max(types_permin, na.rm = T)) %>% 
+  distinct(activity, min, max)
+
+freq_adult_en_minmax_types_rate
+
+
+describeBy(freq_adult_act_permin_sp$types_permin_act, freq_adult_act_permin_sp$activity, mat = T, fast = T)
+
+freq_adult_sp_minmax_types_rate <- freq_adult %>% 
+  filter(language == "spanish") %>% 
+  group_by(activity, language) %>% 
+  mutate(min = min(types_permin, na.rm = T), 
+         max = max(types_permin, na.rm = T)) %>% 
+  distinct(activity, min, max)
+
+freq_adult_sp_minmax_types_rate
+```
+
+
+# MLU
+
+MLU
+
+* excluded NTC 
+* KEPT overlapping ODS during CDS periods
+* averaged across all adult speakers
+* if an activity was not present, we did not include it (i.e., we did not impute any values to create complete cases)
+* we excluded observations when there were 0 number of utterances, since we cannot calculate an MLU when there are no utterances
+
+
+```{r}
+# relabel for plots
+mlu_adult <- mlu_adult %>% 
+  mutate(activity = recode(activity, "conv" = "unst. conv.", "ac" = "adult-centered",
+                           "ods" = "non_tcds"), 
+         language = recode(language, "english" = "English", "spanish" = "Spanish"))
+
+
+# plot
+ggplot(mlu_adult, aes(activity, mlu_w, fill = activity)) + 
+  theme_classic() +
+  geom_boxplot() + 
+  geom_jitter(alpha = .3) + 
+  scale_fill_manual(values=c("darkviolet", "firebrick1", "green2", "dodgerblue1", "darkgoldenrod1", "darkgrey", "black")) + 
+  facet_wrap(~ language) + 
+  theme(legend.position= "none") +
+  theme(text = element_text(size = 35)) +
+  theme(axis.text.x = element_text(angle = 20, hjust = .7)) + 
+  labs(x = "", y = "MLUw")
+ggsave("./figures/boxplot_mluw2.pdf", dpi = 300, width = 18, height = 8, units = "in")
+
+
+# summarize data per participant and activity (all speech only)
+mlu_adult_act <- mlu_adult %>% 
+  group_by(id, activity) %>% 
+  mutate(mlu_w_act = mean(mlu_w)) %>% 
+  distinct(id, language, activity, mlu_w_act)
+
+mlu_adult_act_en <- mlu_adult_act %>% filter(language == "English")
+mlu_adult_act_sp <- mlu_adult_act %>% filter(language == "Spanish")
+
+# descriptives
+describeBy(mlu_adult_act_en$mlu_w_act, mlu_adult_act_en$activity, mat = T, fast = T)
+
+mlu_adult_en_minmax <- mlu_adult %>% 
+  filter(language == "English") %>% 
+  group_by(activity, language) %>% 
+  mutate(min = min(mlu_w, na.rm = T), 
+         max = max(mlu_w, na.rm = T)) %>% 
+  distinct(activity, min, max)
+
+mlu_adult_en_minmax
+
+
+describeBy(mlu_adult_act_sp$mlu_w_act, mlu_adult_act_sp$activity, mat = T, fast = T)
+
+mlu_adult_sp_minmax <- mlu_adult %>% 
+  filter(language == "Spanish") %>% 
+  group_by(activity, language) %>% 
+  mutate(min = min(mlu_w, na.rm = T), 
+         max = max(mlu_w, na.rm = T)) %>% 
+  distinct(activity, min, max)
+
+mlu_adult_sp_minmax
+
+```
+
+
+
+
+# CHIP
+## Responses (RAW and PROP)
+
+CHIP (responses, imitations/expansions; these are utterances that follow a child's utterance, within a 5 utterance window)
+
+* excluded NTC 
+* excluded overlapping ODS during CDS periods
+* averaged across all adult speakers
+* if an activity was not present, we did not include it (i.e., we did not impute any values to create complete cases)
+* we keep 0 values, which are because the adults did not respond even though the child did have utterances [e.g., numerator is 0 but denominator is a value]; if a child did not have utterances, then adult responses could not be calculated so the number of observations differ here from freq and mlu
+* greater than 1 = caregiver had more utterances in response to the child; less than 1 = child had more utterances than caregiver responses
+
+
+```{r}
+# create dfs
+chip2 <- chip %>% 
+  mutate(activity = recode(activity, "conv" = "unst. conv.", "ac" = "adult-centered"), 
+         language = recode(language, "english" = "English", "spanish" = "Spanish"))
+
+
+# plot - total adult responses
+ggplot(chip2, aes(activity, total_adult_resp, fill = activity)) + 
+  geom_boxplot() + 
+  geom_jitter(alpha = .2) + 
+  scale_fill_manual(values=c("darkviolet", "firebrick1", "green2", "dodgerblue1", "darkgoldenrod1", "darkgrey")) + 
+  facet_wrap(~ language, ncol = 1) + 
+  theme(legend.position= "none") +
+  theme(text = element_text(size = 35)) +
+  theme(axis.text.x = element_text(angle = 20, hjust = .7)) + 
+  labs(x = "", y = "")
+
+
+
+# plot - prop of adult resp/child utt
+ggplot(chip2, aes(activity, prop_adultresp_outof_childutt, fill = activity)) + 
+  theme_classic() +
+  geom_boxplot() + 
+  geom_jitter(alpha = .3) + 
+  scale_fill_manual(values=c("darkviolet", "firebrick1", "green2", "dodgerblue1", "darkgoldenrod1", "darkgrey")) + 
+  facet_wrap(~ language) + 
+  theme(legend.position= "none") +
+  theme(text = element_text(size = 35)) +
+  geom_hline(yintercept = 1) + # caregiver and child = equal utts
+  theme(axis.text.x = element_text(angle = 20, hjust = .7)) + 
+  labs(x = "", y = "Prop Responses")
+ggsave("./figures/boxplot_prop_resp2.pdf", dpi = 300, width = 18, height = 8, units = "in")
+
+
+# summarize data per participant and activity (all speech only)
+chip_act <- chip %>% 
+  group_by(id, activity) %>% 
+  mutate(prop_resp_act = mean(prop_adultresp_outof_childutt), 
+         prop_imitexp_act = mean(prop_adult_imitexp_outof_childutt)) %>% 
+  distinct(id, language, activity, prop_resp_act, prop_imitexp_act)
+
+chip_act_en <- chip_act %>% filter(language == "english")
+chip_act_sp <- chip_act %>% filter(language == "spanish")
+
+
+# descriptives
+describeBy(chip_act_en$prop_resp_act, chip_act_en$activity, mat = T, fast = T)
+
+chip_adult_en_minmax_propresp <- chip %>% 
+  filter(language == "english") %>% 
+  group_by(activity, language) %>% 
+  mutate(min = min(prop_adultresp_outof_childutt, na.rm = T), 
+         max = max(prop_adultresp_outof_childutt, na.rm = T)) %>% 
+  distinct(activity, min, max)
+
+chip_adult_en_minmax_propresp
+
+describeBy(chip_act_sp$prop_resp_act, chip_act_sp$activity, mat = T, fast = T)
+
+chip_adult_sp_minmax_propresp <- chip %>% 
+  filter(language == "spanish") %>% 
+  group_by(activity, language) %>% 
+  mutate(min = min(prop_adultresp_outof_childutt, na.rm = T), 
+         max = max(prop_adultresp_outof_childutt, na.rm = T)) %>% 
+  distinct(activity, min, max)
+
+chip_adult_sp_minmax_propresp
+```
+
+
+
+## Imitations/Expansions (RAW and PROP)
+```{r}
+# plot
+ggplot(chip2, aes(activity, total_adult_imitexp, fill = activity)) + 
+  geom_boxplot() + 
+  geom_jitter(alpha = .2) + 
+  scale_fill_manual(values=c("darkviolet", "firebrick1", "green2", "dodgerblue1", "darkgoldenrod1", "darkgrey")) + 
+  facet_wrap(~ language, ncol = 1) + 
+  theme(legend.position= "none") +
+  theme(text = element_text(size = 35)) +
+  theme(axis.text.x = element_text(angle = 20, hjust = .7)) + 
+  labs(x = "", y = "")
+
+
+
+# plot
+ggplot(chip2, aes(activity, prop_adult_imitexp_outof_childutt, fill = activity)) + 
+  theme_classic() + 
+  geom_boxplot() + 
+  geom_jitter(alpha = .3) + 
+  scale_fill_manual(values=c("darkviolet", "firebrick1", "green2", "dodgerblue1", "darkgoldenrod1", "darkgrey")) + 
+  facet_wrap(~ language) + 
+  theme(legend.position= "none") +
+  theme(text = element_text(size = 35)) +
+  geom_hline(yintercept = 1) + # caregiver and child = equal utts
+  theme(axis.text.x = element_text(angle = 20, hjust = .7)) + 
+  labs(x = "", y = "Prop Imitations/Expansions")
+ggsave("./figures/boxplot_prop_imitexp2.pdf", dpi = 300, width = 18, height = 8, units = "in")
+
+
+# descriptives
+describeBy(chip_act_en$prop_imitexp_act, chip_act_en$activity, mat = T, fast = T)
+
+chip_adult_en_minmax_propimitexp <- chip %>% 
+  filter(language == "english") %>% 
+  group_by(activity, language) %>% 
+  mutate(min = min(prop_adult_imitexp_outof_childutt, na.rm = T), 
+         max = max(prop_adult_imitexp_outof_childutt, na.rm = T)) %>% 
+  distinct(activity, min, max)
+
+chip_adult_en_minmax_propimitexp
+
+describeBy(chip_act_sp$prop_imitexp_act, chip_act_sp$activity, mat = T, fast = T)
+
+chip_adult_sp_minmax_propimitexp <- chip %>% 
+  filter(language == "spanish") %>% 
+  group_by(activity, language) %>% 
+  mutate(min = min(prop_adult_imitexp_outof_childutt, na.rm = T), 
+         max = max(prop_adult_imitexp_outof_childutt, na.rm = T)) %>% 
+  distinct(activity, min, max)
+
+chip_adult_sp_minmax_propimitexp
+```
