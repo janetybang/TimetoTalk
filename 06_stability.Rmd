@@ -1,0 +1,495 @@
+---
+title: "Stability Across Activities"
+author: "Janet Bang"
+date: "September 10, 2024"
+output:
+  html_document: 
+   toc: true
+   toc_float: true
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r, echo=FALSE}
+library(knitr)
+opts_chunk$set(echo=TRUE, 
+               warning=FALSE, message=FALSE, 
+               cache=FALSE)
+
+opts_chunk$set(fig.width = 12, fig.height = 8) 
+```
+
+
+This code is for the results to the question: Is there stability across caregivers, regardless of activity?
+
+
+### Load libraries
+```{r}
+library(tidyverse)
+library(GGally)
+library(ppcor)
+library(psych)
+library(Hmisc)
+library(sjPlot)
+library(ggpubr)
+
+# https://github.com/ggobi/ggally/issues/139
+my_custom_smooth <- function(data, mapping, ...) {
+  ggplot(data = data, mapping = mapping) +
+    geom_point(alpha = .4, color = I("black")) + 
+    geom_smooth(method = "lm", color = I("blue"), ...)
+}
+```
+
+
+## Read in data and demographic information
+```{r}
+# demographics
+demo_english <- read_csv("./data_demo_lena_transcripts/demo_english_ms.csv") %>% 
+  rename(id = ID, hi = HI24Final, momed = Momed) %>% 
+  dplyr::select(id, hi, momed) %>% 
+  mutate(id = as.character(id), 
+         language = "english")
+
+demo_spanish <- read_csv("./data_demo_lena_transcripts/demo_spanish_ms.csv") %>% 
+  rename(id = ID, hi = HI_18, momed = MomEd_25m) %>% 
+  dplyr::select(id, hi, momed) %>% 
+  mutate(id = as.character(id), 
+         language = "spanish")
+
+demo <- rbind(demo_english, demo_spanish)
+
+
+# NOTE about periods of non-tCDCS
+# gemods refers to when there are designated start/end periods of other-directed speech (ODS); this was captured using gems (@G) using CHAT conventions
+# kwalods refers to when ODS was transcribed at an utterance-level within a tCDS activity period between caregiver and child (e.g., other-directed speech in the background); this was captured per utterances using CHAT postcodes
+## for tokens/min and types/min, we do not include ODS that occurred within a period of tCDS, because durations were captured by activity and not by utterance
+## for mlu, we include all ODS across gemods and kwalods
+
+
+# NOTE about speech == "all"
+# "speech" includes two levels: all, spont
+# all = refers to all speech by caregivers
+# spont = refers to only speech by caregivers that was considered spontaneous rather than recited (e.g., reading book text, singing memorized common songs like itsy bitsy spider); therefore, 'spont' is a subset of 'all'
+
+
+# freq
+freq <- read_csv("./data_demo_lena_transcripts/freq.csv") %>% 
+  filter(activity != "kwalods", 
+         speech == "all") %>% 
+  mutate(activity = recode(activity, "play" = "cc", "conv" = "cc", 
+                           "food" = "cc", "routines" = "cc", "gemods" = "non_tcds")) %>% # we collapsed across play, routines, feeding, and unstructured conversation for the final paper [see supplemental for all categories]
+  group_by(id, activity, segment_num, speaker) %>% 
+  mutate(dur_min2 = sum(dur_min),
+         tokens2 = sum(tokens), 
+         types2 = mean(types)) %>% 
+  distinct(id, activity, language, speaker, segment_num, tokens2, types2, dur_min2) %>% 
+  mutate(tokens_permin2 = tokens2/dur_min2, 
+         types_permin2 = types2/dur_min2) %>% 
+  distinct(id, activity, language, speaker, segment_num, tokens_permin2, types_permin2) %>% 
+  ungroup() %>% 
+  mutate(activity = factor(activity, levels = c("books", "cc", "ac", "non_tcds")), 
+         id = factor(id), 
+         language = factor(language)) 
+
+
+
+
+# mlu
+mlu <- read_csv("./data_demo_lena_transcripts/mlu.csv") %>% 
+  filter(speech == "all") %>% 
+  mutate(activity = recode(activity, "play" = "cc", "conv" = "cc", 
+                           "food" = "cc", "routines" = "cc", "ods" = "non_tcds")) %>% 
+  group_by(id, activity, segment_num, speaker) %>% 
+  mutate(words_sum2 = sum(words_sum),
+         num_utt_sum2 = sum(num_utt_sum)) %>% 
+  distinct(id, activity, language, speaker, segment_num, words_sum2, num_utt_sum2) %>% 
+  group_by(id, activity, segment_num, speaker) %>% 
+  mutate(mlu_w2 = words_sum2/num_utt_sum2) %>% 
+  distinct(id, activity, language, speaker, segment_num, mlu_w2) %>% 
+  ungroup() %>% 
+  mutate(activity = factor(activity, levels = c("books", "cc", "ac", "non_tcds")), 
+         id = factor(id), 
+         language = factor(language))
+
+
+# chip
+# this includes only caregivers, therefore there is no speaker column
+# we exclude periods of ODS because this is about responsiveness to the child during periods of tCDS
+chip <- read_csv("./data_demo_lena_transcripts/chip.csv") %>% 
+  filter(activity != "ods") %>% 
+  mutate(activity = recode(activity, "play" = "cc", "conv" = "cc", 
+                           "food" = "cc", "routines" = "cc")) %>% 
+  group_by(id, activity, segment_num) %>% 
+  mutate(total_adult_resp2 = sum(total_adult_resp),
+         total_adult_imitexp2 = sum(total_adult_imitexp), 
+         total_child_utt2 = sum(total_child_utt)) %>% 
+  distinct(id, activity, language, segment_num, total_adult_resp2, total_adult_imitexp2, total_child_utt2) %>%
+  mutate(prop_adultresp2 = total_adult_resp2/total_child_utt2, 
+         prop_adult_imitexp2 = total_adult_imitexp2/total_child_utt2) %>% 
+  distinct(id, activity, segment_num, language, prop_adultresp2, prop_adult_imitexp2) %>% 
+  ungroup() %>% 
+  mutate(activity = factor(activity, levels = c("books", "cc", "ac")), 
+         id = factor(id), 
+         language = factor(language))
+  
+
+str(freq)
+str(mlu)
+str(chip)
+```
+
+
+
+
+## Create dfs for ADULTS
+```{r}
+# FREQ
+freq_adult <- freq %>% 
+  filter(speaker == "ADULTS")
+
+
+# MLU
+mlu_adult <- mlu %>% 
+  filter(speaker == "ADULTS")
+```
+
+
+
+
+## Create dfs averaging across segments for one obs per activity
+### Tokens and Types (rate per min)
+```{r}
+# tokens and types: average per activity
+freq_adult_per_activity_id <- freq_adult %>% 
+  group_by(id, activity) %>% 
+  mutate(tokens_permin_avg_act = mean(tokens_permin2), 
+         types_permin_avg_act = mean(types_permin2)) %>% 
+  distinct(id, activity, language, tokens_permin_avg_act, types_permin_avg_act) %>% 
+  ungroup() %>% 
+  mutate(activity = factor(activity, levels = c("books", "cc", "ac", "non_tcds")))
+```
+
+
+### MLUw
+```{r}
+# mlu: average per activity
+mlu_adult_per_activity_id <- mlu_adult %>% 
+  group_by(id, activity) %>% 
+  mutate(mluw_avg_act = mean(mlu_w2)) %>% 
+  distinct(id, activity, language, mluw_avg_act) %>% 
+  ungroup() %>% 
+  mutate(activity = factor(activity, levels = c("books", "cc", "ac", "non_tcds")))
+```
+
+
+
+### Responses and Imitations/Expansions
+```{r}
+# chip: average per activity
+chip_per_activity_id <- chip %>% 
+  group_by(id, activity) %>% 
+  mutate(prop_adultresp_avg_act = mean(prop_adultresp2, na.rm = T), 
+         prop_adult_imitexp_avg_act = mean(prop_adult_imitexp2, na.rm = T)) %>% 
+  distinct(id, activity, language, prop_adultresp_avg_act, prop_adult_imitexp_avg_act)
+```
+
+
+
+
+### Create wide dfs for matrices - tokens and types (rate)
+```{r}
+# tokens
+# all
+tokens_mtx_rate <- freq_adult_per_activity_id %>% 
+  dplyr::select(id, language, activity, tokens_permin_avg_act) %>% 
+  pivot_wider(names_from = activity, values_from = tokens_permin_avg_act) %>% 
+  ungroup() %>% 
+  dplyr::select(c("language", "books", "cc", "ac", "non_tcds"))
+
+
+
+# types
+# all
+types_mtx_rate <- freq_adult_per_activity_id %>% 
+  dplyr::select(id, language, activity, types_permin_avg_act) %>% 
+  pivot_wider(names_from = activity, values_from = types_permin_avg_act) %>% 
+  ungroup() %>% 
+  dplyr::select(c("language", "books", "cc", "ac", "non_tcds"))
+
+```
+
+
+
+### Create wide dfs for matrices - mluw
+```{r}
+# all
+mlu_mtx <- mlu_adult_per_activity_id %>% 
+  dplyr::select(id, language, activity, mluw_avg_act) %>% 
+  pivot_wider(names_from = activity, values_from = mluw_avg_act) %>% 
+  ungroup() %>% 
+  dplyr::select(c("language", "books", "cc", "ac", "non_tcds"))
+```
+
+
+
+### Create wide dfs for matrix - responses and imit/exp
+```{r}
+# prop responses
+# all
+propresp_mtx <- chip_per_activity_id %>% 
+  dplyr::select(id, language, activity, prop_adultresp_avg_act) %>% 
+  pivot_wider(names_from = activity, values_from = prop_adultresp_avg_act) %>% 
+  ungroup() %>% 
+  dplyr::select(c("language", "books", "cc", "ac"))
+
+
+# prop imitations and expansions
+# all
+propimitexp_mtx <- chip_per_activity_id %>% 
+  dplyr::select(id, language, activity, prop_adult_imitexp_avg_act) %>% 
+  pivot_wider(names_from = activity, values_from = prop_adult_imitexp_avg_act) %>% 
+  ungroup() %>% 
+  dplyr::select(c("language", "books", "cc", "ac"))
+```
+
+
+
+
+# Zero-order correlations, one obs per ID (averaged across all activities)
+```{r}
+# tokens and types rate
+zero_corr_tokens_types <- freq_adult_per_activity_id %>% 
+  ungroup() %>% 
+  group_by(id) %>% 
+  mutate(tokens_permin_avg_id = mean(tokens_permin_avg_act), 
+         types_permin_avg_id = mean(types_permin_avg_act)) %>% 
+  distinct(id, language, tokens_permin_avg_id, types_permin_avg_id)
+
+
+# mlu
+zero_corr_mlu <- mlu_adult_per_activity_id %>% 
+  ungroup() %>% 
+  group_by(id) %>% 
+  mutate(mluw_mean_avg_id = mean(mluw_avg_act)) %>% 
+  distinct(id, language, mluw_mean_avg_id)  
+
+
+# chip
+zero_corr_chip <- chip_per_activity_id %>% 
+  ungroup() %>% 
+  group_by(id) %>% 
+  mutate(propresp_avg_id = mean(prop_adultresp_avg_act, na.rm = T), 
+         propimitexp_avg_id = mean(prop_adult_imitexp_avg_act, na.rm = T)) %>% 
+  distinct(id, language, propresp_avg_id, propimitexp_avg_id) 
+
+
+
+# combining tokens, types, mlu
+zero_corr_all_measures <- zero_corr_tokens_types %>% 
+  full_join(zero_corr_mlu, by = c("id", "language")) %>% 
+  full_join(zero_corr_chip, by = c("id", "language"))
+
+
+# matrix
+ggpairs(data = zero_corr_all_measures, 
+        columns = 3:7, 
+        lower = list(continuous = my_custom_smooth), 
+        upper = list(continuous = wrap("cor", size = 9)),
+        title = "zero order corr (avg'd across all activities) - tokens, types, mlu") + 
+  theme(text= element_text(size = 18))
+
+
+# correlation matrices between verbal engagement measures
+# all
+zero_corr_all_measures2 <- zero_corr_all_measures %>% 
+  ungroup %>% 
+  dplyr::select(-c(id, language))
+
+rcorr(as.matrix(zero_corr_all_measures2), type = c("pearson"))
+```
+
+
+
+# Correlation Matrices - within each language
+## Tokens - Rate
+```{r}
+ggpairs(data = tokens_mtx_rate, 
+        columns = 2:5, 
+        switch = 'y', 
+        lower = list(continuous = my_custom_smooth),
+        upper = list(continuous = wrap("cor", size = 7)),
+        title = "Tokens rate (English and Spanish)") + 
+  theme_classic() + 
+  theme(text= element_text(size = 18),
+        strip.placement = "outside",
+        strip.text.y = element_text(face = "bold", size = 15), 
+        strip.text.x = element_text(face = "bold", size = 15)) 
+
+
+# correlation matrices
+tokens_mtx_rate_clean <- tokens_mtx_rate %>% 
+  dplyr::select(-language)
+rcorr(as.matrix(tokens_mtx_rate_clean), type = c("pearson"))
+
+```
+
+
+## Types - Rate
+```{r}
+ggpairs(data = types_mtx_rate, 
+        columns = 2:5, 
+        switch = 'y', 
+        lower = list(continuous = my_custom_smooth),
+        upper = list(continuous = wrap("cor", size = 7)),
+        title = "Types rate (English and Spanish)") + 
+  theme_classic() + 
+  theme(text= element_text(size = 18),
+        strip.placement = "outside",
+        strip.text.y = element_text(face = "bold", size = 15), 
+        strip.text.x = element_text(face = "bold", size = 15)) 
+
+
+# correlation matrices
+types_mtx_rate_clean <- types_mtx_rate %>% 
+  dplyr::select(-language)
+rcorr(as.matrix(types_mtx_rate_clean), type = c("pearson"))
+```
+
+
+
+## MLUw
+```{r}
+mlu_mtx2 <- mlu_mtx %>% 
+  rename("Books" = "books", "Other Child-cent" = "cc", "Adult-cent" = "ac", "non-tCDS" = "non_tcds")
+
+ggpairs(data = mlu_mtx2, 
+        columns = 2:5, 
+        switch = 'y', 
+        lower = list(continuous = my_custom_smooth),
+        upper = list(continuous = wrap("cor", size = 11)),
+        title = "MLUw (English and Spanish)") + 
+  theme_classic() + 
+  theme(text= element_text(size = 26),
+        strip.placement = "outside",
+        strip.text.y = element_text(face = "bold", size = 20), 
+        strip.text.x = element_text(face = "bold", size = 20)) 
+
+# correlation matrices
+mlu_mtx_clean <- mlu_mtx %>% 
+  dplyr::select(-language)
+rcorr(as.matrix(mlu_mtx_clean), type = c("pearson"))
+
+```
+
+
+
+
+## PROP RESPONSES
+```{r}
+ggpairs(data = propresp_mtx, 
+        columns = 2:4, 
+        switch = 'y', 
+        lower = list(continuous = my_custom_smooth),
+        upper = list(continuous = wrap("cor", size = 7)),
+        title = "Prop Resp (English and Spanish)") + 
+  theme_classic() + 
+  theme(text= element_text(size = 18),
+        strip.placement = "outside",
+        strip.text.y = element_text(face = "bold", size = 15), 
+        strip.text.x = element_text(face = "bold", size = 15)) 
+
+
+# correlation matrices
+propresp_mtx_clean <- propresp_mtx %>% 
+  dplyr::select(-language)
+rcorr(as.matrix(propresp_mtx_clean), type = c("pearson"))
+```
+
+
+
+## PROP IMIT and EXP
+```{r}
+ggpairs(data = propimitexp_mtx, 
+        columns = 2:4, 
+        switch = 'y', 
+        lower = list(continuous = my_custom_smooth),
+        upper = list(continuous = wrap("cor", size = 7)),
+        title = "Prop Imit/Exp (English and Spanish)") + 
+  theme_classic() + 
+  theme(text= element_text(size = 18),
+        strip.placement = "outside",
+        strip.text.y = element_text(face = "bold", size = 15), 
+        strip.text.x = element_text(face = "bold", size = 15)) 
+
+# correlation matrices
+propimitexp_mtx_clean <- propimitexp_mtx %>% 
+  dplyr::select(-language)
+rcorr(as.matrix(propimitexp_mtx_clean), type = c("pearson"))
+```
+
+
+
+
+# Scatterplots of just Books and Other CC - INFANCY
+```{r}
+# Tokens; r = .65, p < .001
+tokens_books_cc <- ggplot(tokens_mtx_rate_clean, aes(books, cc)) + 
+  geom_point() + 
+  geom_smooth(method = "lm") + 
+  labs(x = "Books", y = "Other-Child-Centered") +
+  theme(text = element_text(size = 20)) + 
+  annotate("text", x = 55, y = 125, size = 6, label = "Tokens per Min") + 
+  annotate("text", x = 41, y = 115, size = 5, label = "r = .65")
+
+# Types; r = .23, p = .14
+types_books_cc <- ggplot(types_mtx_rate_clean, aes(books, cc)) + 
+  geom_point() + 
+  geom_smooth(method = "lm") + 
+  labs(x = "Books", y = "Other-Child-Centered") +  
+  theme(text = element_text(size = 20)) + 
+  annotate("text", x = 19, y = 70, size = 6, label = "Types per Min") + 
+  annotate("text", x = 14.5, y = 65, size = 5, label = "r = .23")
+
+# MLUw; r = .67, p < .001
+mlu_books_cc <- ggplot(mlu_mtx_clean, aes(books, cc)) + 
+  geom_point() + 
+  geom_smooth(method = "lm") + 
+  labs(x = "Books", y = "Other-Child-Centered") +  
+  theme(text = element_text(size = 20)) + 
+  annotate("text", x = 2.2, y = 5, size = 6, label = "MLUw") + 
+  annotate("text", x = 2.13, y = 4.7, size = 5, label = "r = .67")
+  
+  
+# Prop Resp; r = .36, p = .020
+resp_books_cc <- ggplot(propresp_mtx_clean, aes(books, cc)) + 
+  geom_point() + 
+  geom_smooth(method = "lm") + 
+  labs(x = "Books", y = "Other-Child-Centered") +  
+  theme(text = element_text(size = 20)) + 
+  annotate("text", x = 2.2, y = 3.5, size = 6, label = "Proportion of Responses") + 
+  annotate("text", x = 1.3, y = 3.3, size = 5, label = "r = .36")
+  
+  
+# Imit/Exp; r = .32, p = .04
+imitexp_books_cc <- ggplot(propimitexp_mtx_clean, aes(books, cc)) + 
+  geom_point() + 
+  geom_smooth(method = "lm") + 
+  labs(x = "Books", y = "Other-Child-Centered") +  
+  theme(text = element_text(size = 20)) + 
+  annotate("text", x = 0.37, y = 1, size = 6, label = "Proportion of Imit/Exp") + 
+  annotate("text", x = 0.13, y = .93, size = 5, label = "r = .32")
+
+ggarrange(tokens_books_cc, types_books_cc, mlu_books_cc, resp_books_cc, imitexp_books_cc)
+ggsave("./figures/scatter_books_cc_only_aug16_2024.pdf", width = 14, height = 10, units = "in", dpi = 300)
+
+
+# correlation
+cor.test(tokens_mtx_rate_clean$books, tokens_mtx_rate_clean$cc)
+cor.test(types_mtx_rate_clean$books, types_mtx_rate_clean$cc)
+cor.test(mlu_mtx_clean$books, mlu_mtx_clean$cc)
+cor.test(propresp_mtx_clean$books, propresp_mtx_clean$cc)
+cor.test(propimitexp_mtx_clean$books, propimitexp_mtx_clean$cc)
+
+
+```

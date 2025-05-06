@@ -1,7 +1,7 @@
 ---
 title: "Descriptives of Participants"
 author: "Janet Bang"
-date: "November 17, 2022"
+date: "April 25, 2025"
 output:
   html_document: 
    toc: true
@@ -111,61 +111,16 @@ demo_spanish2 <- demo_spanish %>%
 # combine languages to one df
 demo_both <- rbind(demo_english2, demo_spanish2)
 
-# run compareGroups
-compare_lang_summary <- compareGroups(language ~ age + sex + birth_order
-                                       + momed + hi + income2,
-                                       data = demo_both)
+# age
+psych::describeBy(demo_both$age, demo_both$language, fast = T)
 
-# print table
-# income2: 0 = <$25K, 1 = $25K - $50K, 2 = $50K - $100K, 3 = $100K - $150K, 4 = $150K - $200K
-print(createTable(compare_lang_summary, digits = 2, type = 2, show.n = TRUE), 
-      header.labels = c(p.overall = "p-value"))
+# hollingshead
+psych::describeBy(demo_both$hi, demo_both$language, fast = T)
 
-# range for child age
-min(demo_english2$age)
-max(demo_english2$age)
+# maternal ed
+psych::describeBy(demo_both$momed, demo_both$language, fast = T)
 
-min(demo_spanish2$age)
-max(demo_spanish2$age)
+# sex
+demo_both %>% group_by(language, sex) %>% count()
 
-# range for maternal ed
-min(demo_english2$momed)
-max(demo_english2$momed)
-
-min(demo_spanish2$momed)
-max(demo_spanish2$momed)
-
-
-# range for hi
-min(demo_english2$hi)
-max(demo_english2$hi)
-
-min(demo_spanish2$hi)
-max(demo_spanish2$hi)
 ```
-
-
-
-## Plots - Parent Ed for English and Spanish
-```{r}
-# standardize variables and naming
-demo_english3 <- demo_english %>% 
-  dplyr::select(id, hi, momed) %>% 
-  mutate(group = "english")
-
-demo_spanish3 <- demo_spanish %>% 
-  dplyr::select(id, hi, momed) %>% 
-  mutate(group = "spanish")
-
-
-# combine dfs
-both_groups <- bind_rows(demo_spanish3, demo_english3) %>% 
-  mutate(group = factor(group))
-
-
-# plot of momed
-ggplot(both_groups, aes(momed, fill = group)) + 
-  geom_density(alpha = .6) + 
-  scale_fill_manual(values = c("coral1", "cornflowerblue"))
-```
-

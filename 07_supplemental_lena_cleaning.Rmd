@@ -1,0 +1,261 @@
+---
+title: "Supplemental - LENA recording hours"
+author: "Janet Bang"
+date: "November 17, 2022"
+output:
+  html_document: 
+    toc: yes
+    toc_float: yes
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r, echo=FALSE}
+library(knitr)
+opts_chunk$set(echo=TRUE, 
+               warning=FALSE, message=FALSE, 
+               cache=FALSE)
+```
+
+
+This is code of the supplemental data.
+
+
+## Load libraries
+```{r}
+library(tidyverse)
+library(readxl)
+library(psych)
+
+theme_set(theme_bw())
+```
+
+
+## Read in compiled data
+```{r}
+rbind_english <- read_csv("./data_demo_lena_transcripts/rbind_english_5min_share.csv") %>% 
+  mutate(language = "english") %>% 
+  rename("Sleep" = "True Nap") %>% 
+  dplyr::select(id, Sex, Duration, AWC, Sleep, DNL, Exclude, Date, Time, language)
+
+rbind_spanish <- read_csv("./data_demo_lena_transcripts/rbind_spanish_5min_share.csv") %>% 
+  mutate(language = "spanish") %>% 
+  rename(Exclude = EXCLUDE) %>% 
+  dplyr::select(id, Sex, Duration, AWC, Sleep, DNL, Exclude, Date, Time, language)
+```
+
+
+## Combine data
+```{r}
+both <- rbind(rbind_english, rbind_spanish) %>% 
+  mutate(Time = replace(Time, Time == 0.00, 24.00), 
+         Time = replace(Time, Time == 0.05, 24.05),
+         Time = replace(Time, Time == 0.10, 24.10),
+         Time = replace(Time, Time == 0.15, 24.15),
+         Time = replace(Time, Time == 0.20, 24.20),
+         Time = replace(Time, Time == 0.25, 24.25),
+         Time = replace(Time, Time == 0.30, 24.30),
+         Time = replace(Time, Time == 0.35, 24.35),
+         Time = replace(Time, Time == 0.40, 24.40),
+         Time = replace(Time, Time == 0.45, 24.45),
+         Time = replace(Time, Time == 0.50, 24.50),
+         Time = replace(Time, Time == 0.55, 24.55))
+```
+
+
+## Select children to retain, add NAs for Exclude column, add column numbering days
+```{r}
+both <- both %>% 
+  mutate(id = factor(id)) %>% 
+  replace_na(list(Exclude = 1)) %>% 
+  replace_na(list(DNL = 0)) %>% 
+  replace_na(list(Sleep = 0))
+
+# create a column numbering days (arranged from earliest to last recording)
+date_seq <- both %>% 
+  group_by(id, Date) %>% 
+  distinct(Date) %>% 
+  group_by(id) %>% 
+  arrange(Date) %>% 
+  mutate(date_seq = seq_len(n()))
+
+both2 <- both %>% 
+  full_join(date_seq, by = c("id", "Date"))
+```
+
+
+
+## Number of families with at least 1, 5-min segment of UNCLEANED data in each hour
+```{r}
+# merge new variables into full df
+both2_hour_bin <- both2 %>% 
+  select(c(id, Time, Date, language)) %>% 
+  mutate(hour_bin = ifelse(Time >= 1 & Time < 2, 1, 
+                    ifelse(Time >= 2 & Time < 3, 2, 
+                    ifelse(Time >= 3 & Time < 4, 3, 
+                    ifelse(Time >= 4 & Time < 5, 4, 
+                    ifelse(Time >= 5 & Time < 6, 5,        
+                    ifelse(Time >= 6 & Time < 7, 6,  
+                    ifelse(Time >= 7 & Time < 8, 7,      
+                    ifelse(Time >= 8 & Time < 9, 8, 
+                    ifelse(Time >= 9 & Time < 10, 9, 
+                    ifelse(Time >= 10 & Time < 11, 10,        
+                    ifelse(Time >= 11 & Time < 12, 11, 
+                    ifelse(Time >= 12 & Time < 13, 12, 
+                    ifelse(Time >= 13 & Time < 14, 13, 
+                    ifelse(Time >= 14 & Time < 15, 14, 
+                    ifelse(Time >= 15 & Time < 16, 15, 
+                    ifelse(Time >= 16 & Time < 17, 16, 
+                    ifelse(Time >= 17 & Time < 18, 17, 
+                    ifelse(Time >= 18 & Time < 19, 18, 
+                    ifelse(Time >= 19 & Time < 20, 19, 
+                    ifelse(Time >= 20 & Time < 21, 20, 
+                    ifelse(Time >= 21 & Time < 22, 21, 
+                    ifelse(Time >= 22 & Time < 23, 22, 
+                    ifelse(Time >= 23 & Time < 24, 23, 
+                    ifelse(Time >= 24, 24, "check"))))))))))))))))))))))))) %>% 
+  mutate(hour_bin = factor(hour_bin, levels = c(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 
+                                                11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 
+                                                21, 22, 23, 24))) %>% 
+  distinct(id, language, hour_bin)
+  
+
+# frequencies
+freq_hour_bin <- both2_hour_bin %>% 
+  group_by(hour_bin, language) %>% 
+  count() %>% 
+  ungroup() %>% 
+  group_by(language) %>% 
+  mutate(prop = n/45)
+
+# plot of the number of families with uncleaned recordings in each hour bin
+language_cap <- c(`english` = "English", `spanish` = "Spanish")
+
+ggplot(freq_hour_bin, aes(hour_bin, n, fill = language)) + 
+  geom_col() + 
+  facet_wrap(~ language, labeller = labeller(language = as_labeller(language_cap)), ncol = 1) + 
+  geom_hline(yintercept = 22.5) + # 50% of 45
+  geom_hline(yintercept = 31.5) + # 70% of 45
+  theme(text = element_text(size = 20)) + 
+  labs(x = "Hour", y = "Count") + 
+  theme(legend.position = "none") + 
+  annotate("text", x = 22, y = 24, label = "50%") + 
+  annotate("text", x = 22, y = 33, label = "70%")
+ggsave("./figures/freq_hour_bin.pdf", dpi = 300, width = 11, height = 8, units = "in")
+```
+
+
+## RAW recording per child - HOURS
+```{r}
+# create df
+df_raw_hours <- both2 %>% 
+  group_by(id) %>% 
+  mutate(hours_raw = sum(Duration)/3600) %>% 
+  distinct(id, hours_raw, language)
+
+# plot
+ggplot(df_raw_hours, aes(hours_raw, fill = language)) + 
+  geom_histogram() + 
+  facet_wrap(~ language, ncol = 1)
+
+# descriptives
+psych::describeBy(df_raw_hours$hours_raw, df_raw_hours$language, mat = T, fast = T)
+  
+```
+
+
+## RAW recording per child - DAYS
+```{r}
+# create df
+df_raw_days <- both2 %>% 
+  group_by(id, date_seq) %>% 
+  mutate(hours_raw_per_day = sum(Duration)/3600) %>% 
+  ungroup() %>% 
+  group_by(id) %>% 
+  mutate(num_days_raw = max(date_seq)) %>% 
+  distinct(id, Date, hours_raw_per_day, num_days_raw, language)
+
+
+# plot
+df_raw_days_indiv <- df_raw_days %>% 
+  distinct(id, language, num_days_raw)
+
+ggplot(df_raw_days_indiv, aes(num_days_raw, fill = language)) + 
+  geom_histogram() + 
+  facet_wrap(~ language, ncol = 1)
+
+
+# count of families per number of recording days
+df_raw_days_indiv %>% 
+  group_by(language) %>% 
+  count(num_days_raw) %>% 
+  mutate(prop = n/sum(n))
+
+
+# descriptives
+psych::describeBy(df_raw_days_indiv$num_days_raw, df_raw_days_indiv$language, mat = T, fast = T)
+
+```
+
+
+
+## CLEANED recording per child - HOURS
+```{r}
+# create df
+df_cleaned_hours <- both2 %>% 
+  filter(Exclude == 1 | Exclude == 2) %>% 
+  filter(Sleep != 1) %>% 
+  filter(DNL != 1) %>% 
+  group_by(id) %>% 
+  mutate(hours_cleaned = sum(Duration)/3600) %>% 
+  distinct(id, language, hours_cleaned)
+
+# plot
+ggplot(df_cleaned_hours, aes(hours_cleaned, fill = language)) + 
+  geom_histogram() + 
+  facet_wrap(~ language, ncol = 1)
+
+# hours of cleaned recording
+psych::describeBy(df_cleaned_hours$hours_cleaned, df_cleaned_hours$language, mat = T, fast = T)
+
+```
+
+
+
+## Days of CLEANED recording per child
+```{r}
+# create df
+df_cleaned_days <- both2 %>% 
+  filter(Exclude == 1 | Exclude == 2) %>% 
+  filter(Sleep != 1) %>% 
+  filter(DNL != 1) %>% 
+  group_by(id, date_seq) %>% 
+  mutate(hours_cleaned_per_day = sum(Duration)/3600) %>% 
+  ungroup() %>% 
+  group_by(id) %>% 
+  mutate(num_days_cleaned = max(date_seq)) %>% 
+  distinct(id, Date, hours_cleaned_per_day, num_days_cleaned, language)
+
+
+# plot
+df_cleaned_days_indiv <- df_cleaned_days %>% 
+  distinct(id, language, num_days_cleaned)
+
+
+# plot of max number of recording hours in one day - cleaned
+ggplot(df_cleaned_days_indiv, aes(num_days_cleaned, fill = language)) + 
+  geom_histogram() + 
+  facet_wrap(~ language, ncol = 1)
+
+
+# count of families per number of recording days
+df_cleaned_days_indiv %>% 
+  group_by(language) %>% 
+  count(num_days_cleaned) %>% 
+  mutate(prop = n/sum(n))
+
+
+# descriptives
+psych::describeBy(df_cleaned_days_indiv$num_days_cleaned, df_cleaned_days_indiv$language, mat = T, fast = T)
+```
+

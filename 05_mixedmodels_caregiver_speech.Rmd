@@ -1,7 +1,7 @@
 ---
 title: "Caregiver Speech Mixed Models - 4 categories"
 author: "Janet Bang"
-date: "November 17, 2022"
+date: "May 5, 2025"
 output:
   html_document: 
    toc: true
@@ -163,7 +163,7 @@ mlu_adult <- mlu %>%
 ## Create tokens rate per hour - Children
 ```{r}
 freq_hr_child <- read_csv("./data_demo_lena_transcripts/freq.csv") %>% 
-  dplyr::select(-X1) %>% 
+  dplyr::select(-"...1") %>% 
   filter(speech == "all", 
          speaker == "CHI") %>% 
   group_by(id) %>% 
@@ -184,14 +184,20 @@ freq_hr_child <- read_csv("./data_demo_lena_transcripts/freq.csv") %>%
 freq_all_mm <- freq_adult %>% 
   mutate(id = as.character(id)) %>% 
   left_join(freq_hr_child, by = c("id", "language")) %>% 
-  left_join(demo, by = c("id", "language"))
+  left_join(demo, by = c("id", "language")) %>% 
+  mutate(id = as.factor(id), 
+         language = as.factor(language), 
+         segment_num = as.factor(segment_num))
 
 
 # mlu
 mlu_all_mm <- mlu_adult %>% 
   mutate(id = as.character(id)) %>% 
   left_join(freq_hr_child, by = c("id", "language")) %>% 
-  left_join(demo, by = c("id", "language"))
+  left_join(demo, by = c("id", "language")) %>% 
+  mutate(id = as.factor(id), 
+         language = as.factor(language), 
+         segment_num = as.factor(segment_num))
 
 
 
@@ -199,56 +205,58 @@ mlu_all_mm <- mlu_adult %>%
 chip_mm <- chip %>% 
   mutate(id = as.character(id)) %>% 
   left_join(freq_hr_child, by = c("id", "language")) %>% 
-  left_join(demo, by = c("id", "language"))
+  left_join(demo, by = c("id", "language")) %>% 
+  mutate(id = as.factor(id), 
+         language = as.factor(language), 
+         segment_num = as.factor(segment_num))
+
 
 ```
 
 
 
-# Mixed models - 4 categories
-## TOKENS x ACTIVITY - BOTH - ALL TALK
+# Mixed models - 4 categories - Language as Moderator
+## TOKENS x ACTIVITY - BOTH - ALL TALK - LG as Moderator
 ```{r}
-# # remove outlier - still get interaction
-# freq_all_mm2 <- freq_all_mm %>% 
-#   filter(tokens_permin_avg < 530)
-
-
 # comparing models
-# singular fit for MLU with segment_num as random intercept, so removed this for all models
-m1_both_tokens_all <- lmer(tokens_permin2 ~ tokens_hr_child + language + activity +
-                                (1 | id),
+m1_both_tokens_all <- lmer(tokens_permin2 ~ tokens_hr_child + activity +
+                                (1 | id) + (1 | segment_num),
                                 data = freq_all_mm, REML = F)
 
-m2_both_tokens_all <- lmer(tokens_permin2 ~ tokens_hr_child + (language * activity) +
-                                (1 | id),
+m2_both_tokens_all <- lmer(tokens_permin2 ~ tokens_hr_child + language + activity +
+                                (1 | id) + (1 | segment_num),
+                                data = freq_all_mm, REML = F)
+
+m3_both_tokens_all <- lmer(tokens_permin2 ~ tokens_hr_child + (language * activity) +
+                                (1 | id) + (1 | segment_num),
                                 data = freq_all_mm, REML = F)
 
 # see if adding the intx adds
-anova(m1_both_tokens_all, m2_both_tokens_all)
+anova(m1_both_tokens_all, m2_both_tokens_all, m3_both_tokens_all)
 
 # anova table for final model
-anova(m2_both_tokens_all)
+anova(m3_both_tokens_all)
 
 
 # emmeans
 # interaction - post hoc tests of simple effects
-m2_both_tokens_all_emmeans_simple1 <- emmeans(m2_both_tokens_all, ~ activity | language)
-m2_both_tokens_all_emmeans_simple2 <- emmeans(m2_both_tokens_all, ~ language | activity)
+m3_both_tokens_all_emmeans_simple1 <- emmeans(m3_both_tokens_all, ~ activity | language)
+m3_both_tokens_all_emmeans_simple2 <- emmeans(m3_both_tokens_all, ~ language | activity)
 
-m2_both_tokens_all_emmeans_simple1
+m3_both_tokens_all_emmeans_simple1
 
 
-rbind(pairs(m2_both_tokens_all_emmeans_simple1), pairs(m2_both_tokens_all_emmeans_simple2))
-confint(rbind(pairs(m2_both_tokens_all_emmeans_simple1), pairs(m2_both_tokens_all_emmeans_simple2)))
+rbind(pairs(m3_both_tokens_all_emmeans_simple1), pairs(m3_both_tokens_all_emmeans_simple2))
+confint(rbind(pairs(m3_both_tokens_all_emmeans_simple1), pairs(m3_both_tokens_all_emmeans_simple2)))
 
 
 
 # plot
-tokens_emmeans <- data.frame(emmeans(m2_both_tokens_all, ~ activity | language))
+tokens_emmeans <- data.frame(emmeans(m3_both_tokens_all, ~ activity | language))
 
 
 tokens <- ggplot(tokens_emmeans, aes(activity, emmean, colour = activity, shape = language, group = language)) + 
-  # geom_line(aes(linetype = language)) +
+  geom_line(aes(group = language)) +
   geom_pointrange(aes(ymin = lower.CL, ymax = upper.CL),
                   position = position_dodge(width = 0.2), 
                   size = 1) +
@@ -265,57 +273,54 @@ tokens <- ggplot(tokens_emmeans, aes(activity, emmean, colour = activity, shape 
   labs(x = "", y = "EMM", title = "Tokens (rate per min)")
 
 tokens
-ggsave("./figures/emmeans_tokens_noline.pdf", width = 6, height = 6, units = "in")
+ggsave("./figures/emmeans_tokens_may5_2025.pdf", width = 6, height = 6, units = "in")
 
-
-# model diagnostics
-# only takes into account fixed effects, not random effects
-plot_model(m2_both_tokens_all, type = "diag") 
 ```
 
 
 
 
-## TYPES x ACTIVITY - BOTH - ALL TALK
+## TYPES x ACTIVITY - BOTH - ALL TALK - LG as Moderator
 ```{r}
-# tried without the outlier and no change
-# singular fit for MLU with segment_num as random intercept, so removed this for all models
-
-m1_both_types_all <- lmer(types_permin2 ~ tokens_hr_child + language + activity +
-                                (1 | id),
+m1_both_types_all <- lmer(types_permin2 ~ tokens_hr_child + activity +
+                                (1 | id) + (1 | segment_num),
                                 data = freq_all_mm, REML = F)
 
-m2_both_types_all <- lmer(types_permin2 ~ tokens_hr_child + (language * activity) +
-                                (1 | id),
+m2_both_types_all <- lmer(types_permin2 ~ tokens_hr_child + language + activity +
+                                (1 | id) + (1 | segment_num),
+                                data = freq_all_mm, REML = F)
+
+m3_both_types_all <- lmer(types_permin2 ~ tokens_hr_child + (language * activity) +
+                                (1 | id) + (1 | segment_num),
                                 data = freq_all_mm, REML = F)
 
 # see if adding the intx adds
-anova(m1_both_types_all, m2_both_types_all)
+anova(m1_both_types_all, m2_both_types_all, m3_both_types_all)
 
 # anova table for final model
-anova(m2_both_types_all)
+anova(m3_both_types_all)
 
 
 
 # emmeans
 # interaction - post hoc tests of simple effects
-m2_both_types_all_emmeans_simple1 <- emmeans(m2_both_types_all, ~ activity | language)
-m2_both_types_all_emmeans_simple2 <- emmeans(m2_both_types_all, ~ language | activity)
+m3_both_types_all_emmeans_simple1 <- emmeans(m3_both_types_all, ~ activity | language)
+m3_both_types_all_emmeans_simple2 <- emmeans(m3_both_types_all, ~ language | activity)
 
-m2_both_types_all_emmeans_simple1
+m3_both_types_all_emmeans_simple1
 
 
-rbind(pairs(m2_both_types_all_emmeans_simple1), pairs(m2_both_types_all_emmeans_simple2))
-confint(rbind(pairs(m2_both_types_all_emmeans_simple1), pairs(m2_both_types_all_emmeans_simple2)))
+rbind(pairs(m3_both_types_all_emmeans_simple1), pairs(m3_both_types_all_emmeans_simple2))
+confint(rbind(pairs(m3_both_types_all_emmeans_simple1), pairs(m3_both_types_all_emmeans_simple2)))
 
 
 # plot
-types_emmeans <- data.frame(emmeans(m2_both_types_all, ~ activity | language))
+types_emmeans <- data.frame(emmeans(m3_both_types_all, ~ activity | language))
 
 
 
 types <- ggplot(types_emmeans, aes(activity, emmean, colour = activity, shape = language, group = language)) + 
-  # geom_line(aes(color = activity)) +
+  geom_line(aes(group = language)) +
   geom_pointrange(aes(ymin = lower.CL, ymax = upper.CL),
                   position = position_dodge(width = 0.2), 
                   size = 1) +
@@ -328,63 +333,62 @@ types <- ggplot(types_emmeans, aes(activity, emmean, colour = activity, shape = 
   labs(x = "", y = "EMM", title = "Types (rate per min)")
 
 types
-ggsave("./figures/emmeans_types_noline.pdf", width = 6, height = 6, units = "in")
+ggsave("./figures/emmeans_types_may5_2025.pdf", width = 6, height = 6, units = "in")
 
-
-# model diagnostics
-# only takes into account fixed effects, not random effects
-plot_model(m2_both_types_all, type = "diag")
 ```
 
 
 
 
-## MLUw x ACTIVITY - BOTH - ALL TALK
+## MLUw x ACTIVITY - BOTH - ALL TALK - LG as Moderator
 ```{r}
-# singular fit with segment_num as random intercept, so removed this
-m1_both_mlu_all <- lmer(mlu_w2 ~ tokens_hr_child + language + activity +
+# singular fit with segment_num as random intercept, so we removed this
+m1_both_mlu_all <- lmer(mlu_w2 ~ tokens_hr_child + activity +
                                 (1 | id),
                                 data = mlu_all_mm, REML = F)
 
-m2_both_mlu_all <- lmer(mlu_w2 ~ tokens_hr_child + (language * activity) +
+m2_both_mlu_all <- lmer(mlu_w2 ~ tokens_hr_child + language + activity +
+                                (1 | id),
+                                data = mlu_all_mm, REML = F)
+
+m3_both_mlu_all <- lmer(mlu_w2 ~ tokens_hr_child + (language * activity) +
                                 (1 | id),
                                 data = mlu_all_mm, REML = F)
 
 # see if adding the intx adds
-anova(m1_both_mlu_all, m2_both_mlu_all)
+anova(m1_both_mlu_all, m2_both_mlu_all, m3_both_mlu_all)
 
 # anova table for final model
-anova(m1_both_mlu_all)
+anova(m2_both_mlu_all)
 
 
 
-# emmeans
-m1_both_mlu_all_emmeans_activity <- emmeans(m1_both_mlu_all, ~ activity)
-m1_both_mlu_all_emmeans_language <- emmeans(m1_both_mlu_all, ~ language)
+# emmeans for activity OR language 
+m2_both_mlu_all_emmeans_activity <- emmeans(m2_both_mlu_all, ~ activity)
 
-m1_both_mlu_all_emmeans_activity
-m1_both_mlu_all_emmeans_language
-pairs(m1_both_mlu_all_emmeans_activity)
+m2_both_mlu_all_emmeans_activity
+pairs(m2_both_mlu_all_emmeans_activity)
 
 
-# emmans per language using model WIHTOUT interactions
-m1_both_mlu_all_emmeans_simple1 <- emmeans(m1_both_mlu_all, ~ activity | language)
-m1_both_mlu_all_emmeans_simple2 <- emmeans(m1_both_mlu_all, ~ language | activity)
 
-m1_both_mlu_all_emmeans_simple1
+# emmeans PER language using model WIHTOUT interactions - for figure
+m2_both_mlu_all_emmeans_simple1 <- emmeans(m2_both_mlu_all, ~ activity | language)
+m2_both_mlu_all_emmeans_simple2 <- emmeans(m2_both_mlu_all, ~ language | activity)
 
+m2_both_mlu_all_emmeans_simple1
 
-rbind(pairs(m1_both_mlu_all_emmeans_simple1), pairs(m1_both_mlu_all_emmeans_simple2))
-confint(rbind(pairs(m1_both_mlu_all_emmeans_simple1), pairs(m1_both_mlu_all_emmeans_simple2)))
+# did not use since the interaction was NS
+# rbind(pairs(m2_both_mlu_all_emmeans_simple1), pairs(m2_both_mlu_all_emmeans_simple2))
+# confint(rbind(pairs(m2_both_mlu_all_emmeans_simple1), pairs(m2_both_mlu_all_emmeans_simple2)))
 
 
 
 # plot
-mlu_emmeans <- data.frame(emmeans(m1_both_mlu_all, ~ activity | language))
+mlu_emmeans <- data.frame(emmeans(m2_both_mlu_all, ~ activity | language))
 
 
 mlu <- ggplot(mlu_emmeans, aes(activity, emmean, colour = activity, shape = language, group = language)) + 
-  # geom_line(aes(color = activity)) +
+  geom_line(aes(color = activity)) +
   geom_pointrange(aes(ymin = lower.CL, ymax = upper.CL),
                   position = position_dodge(width = 0.2), 
                   size = 1) +
@@ -396,54 +400,56 @@ mlu <- ggplot(mlu_emmeans, aes(activity, emmean, colour = activity, shape = lang
   scale_x_discrete(labels = c('Books','Other Child-Cent','Adult-Cent', 'non-tCDS')) +
   labs(x = "", y = "EMM", title = "MLUw")
 
-ggsave("./figures/emmeans_mlu_noline.pdf", width = 6, height = 6, units = "in")
+mlu
 
+ggsave("./figures/emmeans_mlu_may5_2025.pdf", width = 6, height = 6, units = "in")
 
-# model diagnostics
-# only takes into account fixed effects, not random effects
-plot_model(m1_both_mlu_all, type = "diag")
 ```
 
 
 
 
-## PROP RESPONSES x ACTIVITY - BOTH - ALL TALK
+## PROP RESPONSES x ACTIVITY - BOTH - ALL TALK - LG as Moderator
 ```{r}
-m1_both_propresp_all <- lmer(prop_adultresp2 ~ tokens_hr_child + language + activity +
-                                (1 | id),
+m1_both_propresp_all <- lmer(prop_adultresp2 ~ tokens_hr_child + activity +
+                                (1 | id) + (1 | segment_num),
                                 data = chip_mm, REML = F)
 
-m2_both_propresp_all <- lmer(prop_adultresp2 ~ tokens_hr_child + (language * activity) +
-                                (1 | id),
+m2_both_propresp_all <- lmer(prop_adultresp2 ~ tokens_hr_child + language + activity +
+                                (1 | id) + (1 | segment_num),
+                                data = chip_mm, REML = F)
+
+m3_both_propresp_all <- lmer(prop_adultresp2 ~ tokens_hr_child + (language * activity) +
+                                (1 | id) + (1 | segment_num),
                                 data = chip_mm, REML = F)
 
 # see if adding the intx adds
-anova(m1_both_propresp_all, m2_both_propresp_all)
+anova(m1_both_propresp_all, m2_both_propresp_all, m3_both_propresp_all)
 
 # anova table for final model
-anova(m2_both_propresp_all)
+anova(m3_both_propresp_all)
 
 
 
 # emmeans
 # interaction - post hoc tests of simple effects
-m2_both_propresp_all_emmeans_simple1 <- emmeans(m2_both_propresp_all, ~ activity | language)
-m2_both_propresp_all_emmeans_simple2 <- emmeans(m2_both_propresp_all, ~ language | activity)
+m3_both_propresp_all_emmeans_simple1 <- emmeans(m3_both_propresp_all, ~ activity | language)
+m3_both_propresp_all_emmeans_simple2 <- emmeans(m3_both_propresp_all, ~ language | activity)
 
-m2_both_propresp_all_emmeans_simple1
+m3_both_propresp_all_emmeans_simple1
 
 
-rbind(pairs(m2_both_propresp_all_emmeans_simple1), pairs(m2_both_propresp_all_emmeans_simple2))
-confint(rbind(pairs(m2_both_propresp_all_emmeans_simple1), pairs(m2_both_propresp_all_emmeans_simple2)))
+rbind(pairs(m3_both_propresp_all_emmeans_simple1), pairs(m3_both_propresp_all_emmeans_simple2))
+confint(rbind(pairs(m3_both_propresp_all_emmeans_simple1), pairs(m3_both_propresp_all_emmeans_simple2)))
 
 
 # plot
-propresp_emmeans <- data.frame(emmeans(m2_both_propresp_all, ~ activity | language))
+propresp_emmeans <- data.frame(emmeans(m3_both_propresp_all, ~ activity | language))
 
 
 
 resp <- ggplot(propresp_emmeans, aes(activity, emmean, colour = activity, shape = language, group = language)) + 
-  # geom_line(aes(color = activity)) +
+  geom_line(aes(group = language)) +
   geom_pointrange(aes(ymin = lower.CL, ymax = upper.CL),
                   position = position_dodge(width = 0.2), 
                   size = 1) +
@@ -455,34 +461,32 @@ resp <- ggplot(propresp_emmeans, aes(activity, emmean, colour = activity, shape 
   scale_x_discrete(labels = c('Books','Other Child-Cent','Adult-Cent')) +
   labs(x = "", y = "EMM", title = "Proportion of Responses")
 
-ggsave("./figures/emmeans_resp_noline.pdf", width = 6, height = 6, units = "in")
+resp
 
+ggsave("./figures/emmeans_resp_may5_2025.pdf", width = 6, height = 6, units = "in")
 
-
-# model diagnostics
-# only takes into account fixed effects, not random effects
-plot_model(m1_both_propresp_all, type = "diag")
 ```
 
 
 
 
-## PROP IMIT/EXP x ACTIVITY - BOTH - ALL TALK
+## PROP IMIT/EXP x ACTIVITY - BOTH - ALL TALK - LG as Moderator
 ```{r}
-# # tried removing two outliers, but no change in findings
-# chip_mm2 <- chip_mm %>% 
-#   filter(prop_adult_imitexp_avg < 2.9)
-
-m1_both_propimitexp_all <- lmer(prop_adult_imitexp2 ~ tokens_hr_child + language + activity +
-                                (1 | id),
+m1_both_propimitexp_all <- lmer(prop_adult_imitexp2 ~ tokens_hr_child + activity +
+                                (1 | id) + (1 | segment_num),
                                 data = chip_mm, REML = F)
 
-m2_both_propimitexp_all <- lmer(prop_adult_imitexp2 ~ tokens_hr_child + (language * activity) +
-                                (1 | id),
+m2_both_propimitexp_all <- lmer(prop_adult_imitexp2 ~ tokens_hr_child + language + activity +
+                                (1 | id) + (1 | segment_num),
+                                data = chip_mm, REML = F)
+
+m3_both_propimitexp_all <- lmer(prop_adult_imitexp2 ~ tokens_hr_child + (language * activity) +
+                                (1 | id) + (1 | segment_num),
                                 data = chip_mm, REML = F)
 
 # see if adding the intx adds
-anova(m1_both_propimitexp_all, m2_both_propimitexp_all)
+anova(m1_both_propimitexp_all, m2_both_propimitexp_all, m3_both_propimitexp_all)
+
 
 # anova table for final model
 anova(m1_both_propimitexp_all)
@@ -490,32 +494,23 @@ anova(m1_both_propimitexp_all)
 
 # emmeans
 m1_both_propimitexp_all_emmeans_activity <- emmeans(m1_both_propimitexp_all, ~ activity)
-m1_both_propimitexp_all_emmeans_language <- emmeans(m1_both_propimitexp_all, ~ language)
 
 m1_both_propimitexp_all_emmeans_activity
-m1_both_propimitexp_all_emmeans_language
-pairs(m1_both_propimitexp_all_emmeans_activity)
-
 
 
 # emmans per language using model WIHTOUT interactions
-m1_both_propimitexp_all_emmeans_simple1 <- emmeans(m1_both_propimitexp_all, ~ activity | language)
-m1_both_propimitexp_all_emmeans_simple2 <- emmeans(m1_both_propimitexp_all, ~ language | activity)
+m2_both_propimitexp_all_emmeans_simple1 <- emmeans(m2_both_propimitexp_all, ~ activity | language)
+m2_both_propimitexp_all_emmeans_simple2 <- emmeans(m2_both_propimitexp_all, ~ language | activity)
 
-m1_both_propimitexp_all_emmeans_simple1
-
-
-rbind(pairs(m1_both_propimitexp_all_emmeans_simple1), pairs(m1_both_propimitexp_all_emmeans_simple2))
-confint(rbind(pairs(m1_both_propimitexp_all_emmeans_simple1), pairs(m1_both_propimitexp_all_emmeans_simple2)))
-
+m2_both_propimitexp_all_emmeans_simple1
 
 
 # plot
-propimitexp_emmeans <- data.frame(emmeans(m1_both_propimitexp_all, ~ activity | language))
+propimitexp_emmeans <- data.frame(emmeans(m2_both_propimitexp_all, ~ activity | language))
 
 
 imit_exp <- ggplot(propimitexp_emmeans, aes(activity, emmean, colour = activity, shape = language, group = language)) + 
-  # geom_line(aes(color = activity)) +
+  geom_line(aes(group = language)) +
   geom_pointrange(aes(ymin = lower.CL, ymax = upper.CL),
                   position = position_dodge(width = 0.2), 
                   size = 1) +
@@ -527,150 +522,150 @@ imit_exp <- ggplot(propimitexp_emmeans, aes(activity, emmean, colour = activity,
   scale_x_discrete(labels = c('Books','Other Child-Cent','Adult-Cent')) +
   labs(x = "", y = "EMM", title = "Proportion of Imitations/Expansions")
 
-ggsave("./figures/emmeans_imit_exp_noline.pdf", width = 6, height = 6, units = "in")
+imit_exp
 
+ggsave("./figures/emmeans_imit_exp_may5_2025.pdf", width = 6, height = 6, units = "in")
 
-# model diagnostics
-# only takes into account fixed effects, not random effects
-plot_model(m1_both_propimitexp_all, type = "diag")
 ```
 
 
 
-# Combining plots (NO LINE)
+# Combining plots
 ```{r}
 # grid all
-ggarrange(tokens, types, mlu, resp, imit_exp, common.legend = T, legend = "bottom")
-ggsave("./figures/emmeans_grid_all_noline.pdf", width = 14, height = 10, units = "in", dpi = 300)
+ggarrange(tokens, types, mlu, resp, imit_exp, common.legend = T, legend = "top")
+ggsave("./figures/emmeans_grid_all_line_may5_2025.pdf", width = 14, height = 10, units = "in", dpi = 300)
 
 ```
 
 
+# Models to check child covariate
+```{r}
+# tokens
+anova(m1_both_tokens_all)
+anova(m1_both_types_all)
+anova(m1_both_mlu_all)
+anova(m1_both_propresp_all)
+anova(m1_both_propimitexp_all)
+```
 
 
-# Checking HI as Covariate
-## TOKENS x ACTIVITY - BOTH - ALL TALK - WITH HI
+# Mixed models - 4 categories - HI as Moderator
+## TOKENS x ACTIVITY - BOTH - ALL TALK - HI as a moderator
 ```{r}
 # comparing models
-# singular fit for MLU with segment_num as random intercept, so removed this for all models
-m1_both_tokens_all_hi <- lmer(tokens_permin2 ~ tokens_hr_child + language + activity +
-                                (1 | id),
+m1_both_tokens_all_hi <- lmer(tokens_permin2 ~ tokens_hr_child + activity +
+                                (1 | id) + (1 | segment_num),
                                 data = freq_all_mm, REML = F)
 
-m2_both_tokens_all_hi <- lmer(tokens_permin2 ~ tokens_hr_child + (language * activity) +
-                                (1 | id),
+m2_both_tokens_all_hi <- lmer(tokens_permin2 ~ tokens_hr_child + hi + activity +
+                                (1 | id) + (1 | segment_num),
                                 data = freq_all_mm, REML = F)
 
-m3_both_tokens_all_hi <- lmer(tokens_permin2 ~ tokens_hr_child + (language * activity) + hi +
-                                (1 | id),
+m3_both_tokens_all_hi <- lmer(tokens_permin2 ~ tokens_hr_child + (hi * activity) +
+                                (1 | id) + (1 | segment_num),
                                 data = freq_all_mm, REML = F)
 
-# see if adding mom ed after the intx adds
+# see if adding the intx adds
 anova(m1_both_tokens_all_hi, m2_both_tokens_all_hi, m3_both_tokens_all_hi)
 
-# anova table for model with intx
-anova(m3_both_tokens_all_hi)
-
+# anova table for final model
+anova(m1_both_tokens_all_hi)
 ```
 
 
 
 
-## TYPES x ACTIVITY - BOTH - ALL TALK - WITH HI
+## TYPES x ACTIVITY - BOTH - ALL TALK - HI as a moderator
 ```{r}
-# tried without the outlier and no change
-# singular fit for MLU with segment_num as random intercept, so removed this for all models
-
-m1_both_types_all_hi <- lmer(types_permin2 ~ tokens_hr_child + language + activity +
-                                (1 | id),
+# comparing models
+m1_both_types_all_hi <- lmer(types_permin2 ~ tokens_hr_child + activity +
+                                (1 | id) + (1 | segment_num),
                                 data = freq_all_mm, REML = F)
 
-m2_both_types_all_hi <- lmer(types_permin2 ~ tokens_hr_child + (language * activity) +
-                                (1 | id),
+m2_both_types_all_hi <- lmer(types_permin2 ~ tokens_hr_child + hi + activity +
+                                (1 | id) + (1 | segment_num),
                                 data = freq_all_mm, REML = F)
 
-m3_both_types_all_hi <- lmer(types_permin2 ~ tokens_hr_child + (language * activity) + hi +
-                                (1 | id),
+m3_both_types_all_hi <- lmer(types_permin2 ~ tokens_hr_child + (hi * activity) +
+                                (1 | id) + (1 | segment_num),
                                 data = freq_all_mm, REML = F)
 
-# see if adding mom ed after the intx adds
+# see if adding the intx adds
 anova(m1_both_types_all_hi, m2_both_types_all_hi, m3_both_types_all_hi)
 
-# anova table for model with intx
-anova(m3_both_types_all_hi)
-
+# anova table for final model
+anova(m1_both_types_all_hi)
 ```
 
 
 
 
-## MLUw x ACTIVITY - BOTH - ALL TALK - WITH HI
+## MLUw x ACTIVITY - BOTH - ALL TALK - HI as a moderator
 ```{r}
 # singular fit with segment_num as random intercept, so removed this
-m1_both_mlu_all_hi <- lmer(mlu_w2 ~ tokens_hr_child + language + activity +
+m1_both_mlu_all_hi <- lmer(mlu_w2 ~ tokens_hr_child + activity +
                                 (1 | id),
                                 data = mlu_all_mm, REML = F)
 
-m2_both_mlu_all_hi <- lmer(mlu_w2 ~ tokens_hr_child + (language * activity) +
+m2_both_mlu_all_hi <- lmer(mlu_w2 ~ tokens_hr_child + hi + activity +
                                 (1 | id),
                                 data = mlu_all_mm, REML = F)
 
-m3_both_mlu_all_hi <- lmer(mlu_w2 ~ tokens_hr_child + (language * activity) + hi +
+m3_both_mlu_all_hi <- lmer(mlu_w2 ~ tokens_hr_child + (hi * activity) +
                                 (1 | id),
                                 data = mlu_all_mm, REML = F)
 
-# see if adding mom ed after the intx adds
+# see if adding the intx adds
 anova(m1_both_mlu_all_hi, m2_both_mlu_all_hi, m3_both_mlu_all_hi)
 
-# anova table for model with intx
-anova(m3_both_mlu_all_hi)
-
+# anova table for final model
+anova(m2_both_mlu_all_hi)
 ```
 
 
 
-## PROP RESPONSES x ACTIVITY - BOTH - ALL TALK - WITH HI
+
+## PROP RESPONSES x ACTIVITY - BOTH - ALL TALK - HI as a moderator
 ```{r}
-m1_both_propresp_all_hi <- lmer(prop_adultresp2 ~ tokens_hr_child + language + activity +
-                                (1 | id),
+m1_both_propresp_all_hi <- lmer(prop_adultresp2 ~ tokens_hr_child + activity +
+                                (1 | id) + (1 | segment_num),
                                 data = chip_mm, REML = F)
 
-m2_both_propresp_all_hi <- lmer(prop_adultresp2 ~ tokens_hr_child + (language * activity) +
-                                (1 | id),
+m2_both_propresp_all_hi <- lmer(prop_adultresp2 ~ tokens_hr_child + hi + activity +
+                                (1 | id) + (1 | segment_num),
                                 data = chip_mm, REML = F)
 
-m3_both_propresp_all_hi <- lmer(prop_adultresp2 ~ tokens_hr_child + (language * activity) + hi +
-                                (1 | id),
+m3_both_propresp_all_hi <- lmer(prop_adultresp2 ~ tokens_hr_child + (hi * activity) +
+                                (1 | id) + (1 | segment_num),
                                 data = chip_mm, REML = F)
 
-# see if adding mom ed after the intx adds
+# see if adding the intx adds
 anova(m1_both_propresp_all_hi, m2_both_propresp_all_hi, m3_both_propresp_all_hi)
-
-# anova table for model with intx
-anova(m3_both_propresp_all_hi)
-
 ```
 
 
 
-## PROP IMIT/EXP x ACTIVITY - BOTH - ALL TALK - WITH HI
+
+## PROP IMIT/EXP x ACTIVITY - BOTH - ALL TALK - HI as a moderator
 ```{r}
-m1_both_propimitexp_all_hi <- lmer(prop_adult_imitexp2 ~ tokens_hr_child + language + activity +
-                                (1 | id),
+# using model removing 1 outlier
+m1_both_propimitexp_all_hi <- lmer(prop_adult_imitexp2 ~ tokens_hr_child + activity +
+                                (1 | id) + (1 | segment_num),
                                 data = chip_mm, REML = F)
 
-m2_both_propimitexp_all_hi <- lmer(prop_adult_imitexp2 ~ tokens_hr_child + (language * activity) +
-                                (1 | id),
+m2_both_propimitexp_all_hi <- lmer(prop_adult_imitexp2 ~ tokens_hr_child + hi + activity +
+                                (1 | id) + (1 | segment_num),
                                 data = chip_mm, REML = F)
 
-m3_both_propimitexp_all_hi <- lmer(prop_adult_imitexp2 ~ tokens_hr_child + (language * activity) + hi +
-                                (1 | id),
+m3_both_propimitexp_all_hi <- lmer(prop_adult_imitexp2 ~ tokens_hr_child + (hi * activity) +
+                                (1 | id) + (1 | segment_num),
                                 data = chip_mm, REML = F)
 
-# see if adding mom ed after the intx adds
+# see if adding the intx adds
 anova(m1_both_propimitexp_all_hi, m2_both_propimitexp_all_hi, m3_both_propimitexp_all_hi)
 
-# anova table for model with intx
-anova(m3_both_propimitexp_all_hi)
-
+# anova table for final model
+anova(m1_both_propimitexp_all_hi)
 ```
+

@@ -1,7 +1,7 @@
 ---
 title: "Descriptives of Caregiver Speech - Automated LENA values"
 author: "Janet Bang"
-date: "November 17, 2022"
+date: "April 25, 2025"
 output:
   html_document: 
    toc: true
@@ -15,7 +15,7 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 
-This code is for the LENA data in the manuscript.
+This code is for the LENA data in the manuscript and includes other descriptive data about the 10-minute segments.
 
 
 # Load libraries and set theme
@@ -24,6 +24,7 @@ library(tidyverse)
 library(ppcor)
 library(gridExtra)
 library(psych)
+library(effsize)
 
 theme_set(theme_bw())
 ```
@@ -157,7 +158,6 @@ max(lena_allday$awc_perhr_cleaned)/min(lena_allday$awc_perhr_cleaned)
 # ALL-DAY TALK
 ## AWC - ascending order plot per family
 ```{r}
-# separate graphs for english and spanish - otherwise there are gaps in the x axis for id
 awc1 <- ggplot(lena_allday_en, aes(x = reorder(id, awc_perhr_cleaned), y = awc_perhr_cleaned)) +
   geom_col(fill = "darkgrey") +
   scale_y_continuous(limits = c(0, 4400)) +
@@ -211,6 +211,7 @@ awc2_top <- ggplot(tophr_sp, aes(x = reorder(id, awc_perhr_densest), y = awc_per
         axis.text.x = element_blank(), 
         axis.ticks.x = element_blank()) + 
   labs(x = "Families with 2-year-old children", y = "AWC per densest tCDS hour", title = "Spanish")
+
 # figure for paper
 ggsave("./figures/awc_perdensehr_sp.pdf", width = 16, height = 11, dpi = 300)
 
@@ -228,6 +229,7 @@ tophr_allday_en <- lena_allday_en %>%
   full_join(tophr_en, by = "id")
 
 t.test(tophr_allday_en$awc_perhr_cleaned, tophr_allday_en$awc_perhr_densest, paired = T)
+effsize::cohen.d(tophr_allday_en$awc_perhr_cleaned, tophr_allday_en$awc_perhr_densest)
 
 
 # spanish
@@ -235,19 +237,27 @@ tophr_allday_sp <- lena_allday_sp %>%
   full_join(tophr_sp, by = "id")
 
 t.test(tophr_allday_sp$awc_perhr_cleaned, tophr_allday_sp$awc_perhr_densest, paired = T)
+effsize::cohen.d(tophr_allday_sp$awc_perhr_cleaned, tophr_allday_sp$awc_perhr_densest)
 
 
-
-# check to see if English and Spanish are different
-tophr_both <- rbind(tophr_allday_en, tophr_allday_sp)
-t.test(tophr_both$uncleaned_lena_dur ~ tophr_both$language.y, paired = F)
-t.test(tophr_both$cleaned_lena_dur ~ tophr_both$language.y, paired = F)
+# full sample
+tophr_allday <- lena_allday %>% 
+  full_join(tophr, by = c("id", "language"))
 
 ```
 
 
 ## Correlations
 ```{r}
+# full sample
+ggplot(tophr_allday, aes(awc_perhr_densest, awc_perhr_cleaned, color = language)) +
+  geom_point() + 
+  geom_smooth(method = "lm") + 
+  theme(text = element_text(size = 25))
+
+cor.test(tophr_allday$awc_perhr_densest, tophr_allday$awc_perhr_cleaned)
+
+
 # english
 ggplot(tophr_allday_en, aes(awc_perhr_densest, awc_perhr_cleaned)) +
   geom_point() + 
@@ -258,6 +268,7 @@ ggplot(tophr_allday_en, aes(awc_perhr_densest, awc_perhr_cleaned)) +
   labs(x = "AWC per hour - DENSEST tCDS Hour", y = "AWC per hour - ALL DAY", title = "English") + 
   annotate("text", x = 2000, y = 4000, label = "paste(r, \" = .74\")", parse = TRUE, size = 10) + 
   theme(text = element_text(size = 25))
+
 ggsave("./figures/corr_tophr_allday_en.pdf", width = 10, height = 8)
 
 cor.test(tophr_allday_en$awc_perhr_densest, tophr_allday_en$awc_perhr_cleaned)
@@ -273,6 +284,7 @@ ggplot(tophr_allday_sp, aes(awc_perhr_densest, awc_perhr_cleaned)) + # .79
   labs(x = "AWC per hour - DENSEST tCDS Hour", y = "AWC per hour - ALL DAY", title = "Spanish") + 
   annotate("text", x = 2000, y = 4000, label = "paste(r, \" = .79\")", parse = TRUE, size = 10) +
   theme(text = element_text(size = 25))
+
 ggsave("./figures/corr_tophr_allday_sp.pdf", width = 10, height = 8) 
 
 cor.test(tophr_allday_sp$awc_perhr_densest, tophr_allday_sp$awc_perhr_cleaned)

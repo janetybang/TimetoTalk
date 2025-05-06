@@ -1,7 +1,7 @@
 ---
 title: "Descriptives of Caregiver Speech - Transcription data"
 author: "Janet Bang"
-date: "November 17, 2022"
+date: "April 27, 2025"
 output:
   html_document: 
     toc: yes
@@ -60,7 +60,7 @@ theme_set(theme_bw())
 
 # freq
 freq <- read_csv("./data_demo_lena_transcripts/freq.csv") %>% 
-  dplyr::select(-X1) %>% 
+  dplyr::select(-"...1") %>% 
   filter(activity != "kwalods") %>% 
   filter(speech == "all") %>% 
   mutate(activity = factor(activity, levels = c("books", "play", "food", 
@@ -112,7 +112,6 @@ mlu_adult <- mlu %>%
 
 
 
-
 # FREQ - Boxplots and descriptives for ADULTS
 ## TOKENS (raw)
 
@@ -120,8 +119,8 @@ mlu_adult <- mlu %>%
 Freq (tokens, types)
 
 * excluded non-target children (NTC)
-* excluded overlapping ODS during CDS periods
-* averaged across all adult speakers
+* excluded ODS during tCDS periods
+* averaged across all adult speakers within activities
 * if an activity was not present, we did not include it (i.e., we did not impute any values to create complete cases)
 * 0 values are included when the individual does not speak though we know they are present in the activity
 
@@ -317,7 +316,7 @@ freq_adult_en_minmax_types_rate
 describeBy(freq_adult_act_permin_sp$types_permin_act, freq_adult_act_permin_sp$activity, mat = T, fast = T)
 
 freq_adult_sp_minmax_types_rate <- freq_adult %>% 
-  filter(language == "spanish") %>% 
+  filter(language == "Spanish") %>% 
   group_by(activity, language) %>% 
   mutate(min = min(types_permin, na.rm = T), 
          max = max(types_permin, na.rm = T)) %>% 
@@ -332,7 +331,7 @@ freq_adult_sp_minmax_types_rate
 MLU
 
 * excluded NTC 
-* KEPT overlapping ODS during CDS periods
+* KEPT ODS during tCDS periods
 * averaged across all adult speakers
 * if an activity was not present, we did not include it (i.e., we did not impute any values to create complete cases)
 * we excluded observations when there were 0 number of utterances, since we cannot calculate an MLU when there are no utterances
@@ -536,3 +535,30 @@ chip_adult_sp_minmax_propimitexp <- chip %>%
 
 chip_adult_sp_minmax_propimitexp
 ```
+
+
+# Number of Speakers
+```{r}
+# this was extracted using speaker roles from the FREQ output
+# in a prior code, the n_speakers was calculated to reflect the number of speakers for the speaker role (child, adults), during the respective activity and segment num
+# removing kwalods because these are overlapping utterances during tCDS activities
+
+num_speakers <- read_csv("./data_demo_lena_transcripts/num_speakers.csv") %>% 
+  filter(Speaker2 == "ADULTS" & activity != "kwalods") %>% 
+  distinct(id, activity, segment_num, language, n_speakers) %>% 
+  mutate(bin_n_adult_speakers = ifelse(n_speakers > 1, "more_than1", "1_adult")) %>% 
+  group_by(activity) %>% 
+  mutate(n_instances_by_activity = n()) %>% 
+  ungroup() %>% 
+  group_by(activity, bin_n_adult_speakers) %>% 
+  mutate(n_by_bin = n())
+
+
+num_speakers %>% 
+  ungroup() %>% 
+  distinct(activity, bin_n_adult_speakers, n_by_bin, n_instances_by_activity) %>% 
+  mutate(prop = n_by_bin / n_instances_by_activity)
+
+  
+```
+

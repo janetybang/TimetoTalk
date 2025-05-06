@@ -1,7 +1,7 @@
 ---
 title: "Descriptives of Duration of Activities"
 author: "Janet Bang"
-date: "November 17, 2022"
+date: "April 25, 2025"
 output:
   html_document: 
    toc: true
@@ -15,7 +15,7 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 
-This code is for the duration-based activity information. 
+This code is for the duration-based activity information and other supplemental figures. 
 
 
 ### Load libraries and set theme
@@ -34,7 +34,7 @@ theme_set(theme_bw())
 data_dur <- read_csv("./data_demo_lena_transcripts/elan_activity_dur.csv") %>% 
   mutate(id = factor(id), 
          language = factor(language)) %>% 
-  dplyr::select(-X1) %>% 
+  dplyr::select(-"...1") %>% 
   rename(tcds_min_seg = tcds_min) %>% 
   mutate(activity = factor(activity, levels = c("books", "play", "food", "routines", "conv", "ac", "non-tcds")))
 
@@ -78,7 +78,7 @@ arrange(num_segments_spanish, n)
 ggplot(data_dur, aes(activity, dur_min, fill = activity)) +
   theme_classic() +
   geom_boxplot() + 
-  geom_jitter(alpha = .3) + 
+  geom_jitter(alpha = .2) + 
   scale_fill_manual(values=c("darkviolet", "firebrick1", "green2", "dodgerblue1", "darkgoldenrod1", "darkgrey", "black")) + 
   facet_wrap(~ language) +
   theme(legend.position= "none") +
@@ -87,10 +87,10 @@ ggplot(data_dur, aes(activity, dur_min, fill = activity)) +
         text = element_text(size = 30)) + 
   labs(x = "Activity", y = "Duration (min)") + 
   theme(panel.spacing = unit(4, "lines"))
-ggsave("./figures/boxplot_duration.pdf", dpi = 300, width = 18, height = 8, units = "in")
 
 
 # summarize data per participant and activity (all speech only)
+
 # english
 data_en_act <- data_dur_en %>% 
   group_by(id, activity) %>% 
@@ -135,7 +135,7 @@ describeBy(data_sp_act$dur_min_act, data_sp_act$activity, mat = T, fast = T)
 
 
 
-### Proportion duration - summed across segments
+### Proportion duration - TOTAL SUM across segments (not including 0s)
 ```{r}
 # duration - minutes
 data_dur_sum <- data_dur %>% 
@@ -144,13 +144,21 @@ data_dur_sum <- data_dur %>%
   distinct(id, language, activity, dur_act_total) %>% 
   ungroup() %>% 
   group_by(id) %>% 
-  mutate(dur_hour = sum(dur_act_total))
+  mutate(dur_hour = sum(dur_act_total), 
+         activity2 = ifelse(activity == "books", "Books", 
+                     ifelse(activity == "play", "Playing", 
+                     ifelse(activity == "food", "Feeding", 
+                     ifelse(activity == "routines", "Routines", 
+                     ifelse(activity == "conv", "Unst. Conv.", 
+                     ifelse(activity == "ac", "Adult-cent.", "non-tCDS")))))), 
+         activity2 = factor(activity2, levels = c("Books", "Playing", "Feeding", "Routines", 
+                                                  "Unst. Conv.", "Adult-cent.", "non-tCDS")))
 
-ggplot(data_dur_sum, aes(activity, dur_act_total, fill = activity)) +
+ggplot(data_dur_sum, aes(activity2, dur_act_total, fill = activity2)) +
   theme_classic() +
   geom_boxplot() + 
   geom_jitter(alpha = .3) + 
-  scale_fill_manual(values=c("darkviolet", "firebrick1", "green2", "dodgerblue1", "darkgoldenrod1", "darkgrey", "black")) + 
+  scale_fill_manual(values=c("darkviolet", "firebrick1", "green2", "dodgerblue1", "darkgoldenrod1", "darkgrey", "lightgrey")) + 
   facet_wrap(~ language) +
   theme(legend.position= "none") +
   # theme(text = element_text(size = 35)) +
@@ -171,7 +179,8 @@ describeBy(data_dur_sum_sp$dur_act_total, data_dur_sum_sp$activity, mat = T, fas
 ```
 
 
-### Proportion duration - other child-centered
+
+### Proportion duration - other-child-centered
 ```{r}
 # duration - minutes
 data_dur_othercc <- data_dur %>% 
@@ -194,6 +203,7 @@ data_dur_othercc_sp <- data_dur_othercc %>% filter(language == "spanish")
 describeBy(data_dur_othercc_en$dur_act_total, data_dur_othercc_en$activity2, mat = T, fast = T)
 describeBy(data_dur_othercc_sp$dur_act_total, data_dur_othercc_sp$activity2, mat = T, fast = T)
 ```
+
 
 
 # Plotting activity by time of day
@@ -232,9 +242,57 @@ ggsave("./figures/time_activity_by_dur.pdf", width = 22, height = 11, dpi = 300)
 ```
 
 
+## Examining continguity of segments (supplemental analyses)
+```{r}
+ggplot(data_dur, aes(Time, id, color = language)) + 
+  geom_point(size = 3) + 
+  theme(axis.text.y = element_blank()) + 
+  geom_vline(xintercept = 6, color = "darkgrey") + 
+  geom_vline(xintercept = 7, color = "darkgrey") +   
+  geom_vline(xintercept = 8, color = "darkgrey") +   
+  geom_vline(xintercept = 9, color = "darkgrey") +   
+  geom_vline(xintercept = 10, color = "darkgrey") +        
+  geom_vline(xintercept = 11, color = "darkgrey") +   
+  geom_vline(xintercept = 12, color = "darkgrey") +
+  geom_vline(xintercept = 13, color = "darkgrey") +
+  geom_vline(xintercept = 14, color = "darkgrey") +
+  geom_vline(xintercept = 15, color = "darkgrey") +
+  geom_vline(xintercept = 16, color = "darkgrey") +
+  geom_vline(xintercept = 17, color = "darkgrey") +
+  geom_vline(xintercept = 18, color = "darkgrey") +
+  geom_vline(xintercept = 19, color = "darkgrey") +
+  geom_vline(xintercept = 20, color = "darkgrey") +
+  geom_vline(xintercept = 21, color = "darkgrey") +
+  geom_vline(xintercept = 22, color = "darkgrey") +
+  geom_vline(xintercept = 23, color = "darkgrey") +
+  geom_vline(xintercept = 24, color = "darkgrey")
+  labs(x = "Time", y = "Participant")
+  
+
+ggsave("./figures/sampling_byTime_perID.pdf", width = 11, height = 8.5, dpi = 300)
+
+```
 
 
-# Pie charts for proportion duration of time per hour across families (adding time across six segments)
+
+## Examining the number of activities per segment
+```{r}
+# calculate number of activities per segment
+data_dur3 <- data_dur %>% 
+  ungroup() %>% 
+  filter(activity != "non-tcds") %>% 
+  dplyr::select(c(id, activity, segment_num, language)) %>% 
+  group_by(id, segment_num, language) %>% 
+  count()
+
+psych::describe(data_dur3$n, fast = T)
+
+psych::describeBy(data_dur3$n, data_dur3$language, fast = T)
+```
+
+
+
+# Proportion duration of time per hour across families (adding time across six segments, including 0s) - For publication
 ## Create dfs for individual participants
 ```{r}
 # create duration per hour
@@ -243,6 +301,14 @@ total_dur_hour <- data_dur %>%
   group_by(id) %>% 
   mutate(dur_six_segments = sum(Dur10minval)/60) %>% 
   distinct(id, dur_six_segments, language)
+
+# data_dur_sum <- data_dur %>% 
+#   group_by(id, activity) %>% 
+#   mutate(dur_act_total = sum(dur_min)) %>% 
+#   distinct(id, language, activity, dur_act_total) %>% 
+#   ungroup() %>% 
+#   group_by(id) %>% 
+#   mutate(dur_hour = sum(dur_act_total))
 
 
 # merge with summary of dur per activity in one hour
@@ -291,107 +357,41 @@ psych::describeBy(data_dur_prop_all_wide, data_dur_prop_all_wide$language, fast 
 
 
 
-## Create dfs for single mean values across families
+## For publication - boxplot
 ```{r}
-prop_dur_mean_1hr_all <- data_dur_prop_all %>% 
-  group_by(activity, language) %>% 
-  dplyr::summarize(mean = mean(prop_dur_activity_1hr, na.rm=TRUE)) %>% 
-  ungroup() %>% 
-  mutate(activity = factor(activity, levels = c("books", "play", "food", "routines", "conv", "ac", "non-tcds")))
-  
-prop_dur_mean_1hr_all %>% spread(activity, mean)
-```
+# make proportions long again
+data_dur_prop_all_forpub <- data_dur_prop_all_wide %>% 
+  dplyr::select(id, language, ac, books, conv, food, nontcds, play, routines, prop_total, prop_childcc, prop_tcds) %>% 
+  rename(Books = books, "Unst. Conv." = conv, Feeding = food, 
+         "non-tCDS" = nontcds, Playing = play, Routines = routines, 
+         "Only Child-cent." = prop_childcc, 
+         "All tCDS" = prop_tcds, "Adult-cent." = ac) %>% 
+  mutate(language2 = ifelse(language == "english", "English", "Spanish")) %>% 
+  pivot_longer(cols = "Adult-cent.": "All tCDS", 
+               names_to = "activity", 
+               values_to = "proportion") %>% 
+  mutate(activity = factor(activity, levels = c("Books", "Playing", "Feeding", 
+                                                "Routines", "Unst. Conv.", "Adult-cent.", 
+                                                "non-tCDS", "Only Child-cent.", "All tCDS"))) %>% 
+  filter(activity != "Only Child-cent." & activity != "All tCDS")
 
 
-
-## For publication
-```{r, fig.height = 7, fig.width = 10}
-prop_dur_mean_1hr_all_pub <- prop_dur_mean_1hr_all %>% 
-  mutate(language = recode(language, "english" = "English", "spanish" = "Spanish")) %>% 
-  mutate(activity = recode(activity, "ac" = "adult-cent.", "conv" = "unst. conv.", "nontcds" = "non-tcds")) 
-
-ggplot(prop_dur_mean_1hr_all_pub, aes(x="", y = mean, fill = activity)) + 
+# boxplot
+ggplot(data_dur_prop_all_forpub, aes(activity, proportion, fill = activity)) +
   theme_classic() +
-  geom_bar(width = 1, stat = "identity") +
-  coord_polar("y", start = 0) +
-  scale_fill_manual(values=c("darkviolet", "firebrick1", "green2", "dodgerblue1", "darkgoldenrod1", "darkgrey", "grey92")) + 
-  geom_text(aes(label = paste0(round(mean*100), "%")), position = position_stack(vjust = 0.5), size = 20) + 
-  theme(axis.line = element_blank(),
-        axis.text = element_blank(),
-        axis.ticks = element_blank()) + 
-  # scale_y_continuous(breaks = y.breaks,   # where to place the labels
-  #                    labels = prop_dur_mean_1hr_all_pub$activity) + # the labels
-  labs(title = "", x = "", y = "") +
-  theme(text = element_text(size = 60),
-        legend.position = "none") +
-  # theme(legend.direction = "horizontal", 
-        # legend.position = "bottom") +
-  facet_wrap(~ language)
-ggsave("./figures/piechart_dur_1hr.pdf", width = 24, height = 24, units = "in", dpi = 300)
-```
+  geom_boxplot(alpha = .8, outlier.shape = NA) + 
+  geom_jitter(alpha = .3) + 
+  scale_fill_manual(values=c("darkviolet", "firebrick1", "green2", "dodgerblue1", "darkgoldenrod1", "darkgrey", "lightgrey")) + 
+  stat_summary(fun ="mean", size = 2, shape = 18) + 
+  facet_wrap(~ language2) +
+  labs(x = "Activity", y = "Proportion \nDuration \n(out of 1 hour)") + 
+  theme(legend.position= "none",
+        axis.text.x = element_text(angle = 30, hjust = .7), 
+        text = element_text(size = 25), 
+        axis.title.y = element_text(angle = 0, vjust = 0.5), 
+        panel.spacing = unit(4, "lines"))
 
+ggsave("./figures/boxplot_dur_1hr_w_mean.pdf", width = 19, height = 9, units = "in", dpi = 300)
 
-# Additional figures (not in publication)
-## Bar plot of each family and proportion duration per hour - sorted by AWC in one hour
-```{r}
-# total awc per hour
-total_awc_hour <- data_dur %>% 
-  distinct(id, segment_num, rectime, AWCval, language) %>% 
-  group_by(id) %>% 
-  mutate(awc_total_tophr = sum(AWCval)) %>% 
-  distinct(id, awc_total_tophr, language)
-
-
-data_dur_prop_en <- data_dur_prop_all %>% 
-  full_join(total_awc_hour, by = c("id", "language")) %>% 
-  filter(language == "english") %>% 
-  mutate(activity = factor(activity, levels = c("books", "play", "food", "routines", "conv", "ac", "nontcds")))
-
-data_dur_prop_sp <- data_dur_prop_all %>% 
-  full_join(total_awc_hour, by = c("id", "language")) %>% 
-  filter(language == "spanish") %>% 
-  mutate(activity = factor(activity, levels = c("books", "play", "food", "routines", "conv", "ac", "nontcds")))
-
-
-# plots
-ggplot(data_dur_prop_en, aes(x = reorder(id, awc_total_tophr),  y = prop_dur_activity_1hr, fill = activity)) + 
-  geom_col() + 
-  scale_fill_manual(values=c("darkviolet", "firebrick1", "dodgerblue1", "green2", "darkgoldenrod1", "darkgrey", "black")) +
-  theme(axis.text.x = element_text(angle = 90, hjust = 1))
-
-
-ggplot(data_dur_prop_sp, aes(x = reorder(id, awc_total_tophr),  y = prop_dur_activity_1hr, fill = activity)) + 
-  geom_col() + 
-  scale_fill_manual(values=c("darkviolet", "firebrick1", "dodgerblue1", "green2", "darkgoldenrod1", "darkgrey", "black")) +
-  theme(axis.text.x = element_text(angle = 90, hjust = 1))
-
-
-
-# plots - highlighting book reading
-ggplot(data_dur_prop_en, aes(x = reorder(id, awc_total_tophr),  y = prop_dur_activity_1hr, fill = activity)) + 
-  geom_col() + 
-  scale_fill_manual(values=c("darkviolet", "grey", "grey", "grey", "grey", "grey", "black")) +
-  theme(axis.text.x = element_text(angle = 90, hjust = 1))
-
-
-ggplot(data_dur_prop_sp, aes(x = reorder(id, awc_total_tophr),  y = prop_dur_activity_1hr, fill = activity)) + 
-  geom_col() + 
-  scale_fill_manual(values=c("darkviolet", "grey", "grey", "grey", "grey", "grey", "black")) +
-  theme(axis.text.x = element_text(angle = 90, hjust = 1))
-```
-
-
-
-## Instance of each activity per participant
-```{r, fig.height = 7, fig.width = 14}
-ggplot(data_dur_en, aes(id, fct_rev(activity), color = activity)) + 
-  geom_point(size = 8) + 
-  scale_color_manual(values=c("darkviolet", "firebrick1", "dodgerblue1", "green2", "darkgoldenrod1", "darkgrey", "black")) +
-  theme(axis.text.x = element_text(angle = 90, hjust = 1))
-
-ggplot(data_dur_sp, aes(id, fct_rev(activity), color = activity)) + 
-  geom_point(size = 8) + 
-  scale_color_manual(values=c("darkviolet", "firebrick1", "dodgerblue1", "green2", "darkgoldenrod1", "darkgrey", "black")) +
-  theme(axis.text.x = element_text(angle = 90, hjust = 1))
 ```
 
