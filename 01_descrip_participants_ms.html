@@ -1514,37 +1514,25 @@ library(gridExtra)</code></pre>
 <div id="read-in-demographic-information" class="section level2">
 <h2>Read in demographic information</h2>
 <pre class="r"><code>demo_english &lt;- read_csv(&quot;./data_demo_lena_transcripts/demo_english_ms.csv&quot;) %&gt;% 
-  rename(id = &quot;ID&quot;, birth_order = &quot;birthorder&quot;, 
-         momed =&quot;Momed&quot;, 
+  rename(id = &quot;ID&quot;, momed =&quot;Momed&quot;, 
          hi = &quot;HI24Final&quot;, ethnicity = &quot;ethnicity_18m_or_25m&quot;,
          age = &quot;Age24&quot;) %&gt;% 
-  mutate(income2 = ifelse(grepl(&quot;&lt;25K&quot;, income), &quot;0&quot;, 
-                   ifelse(grepl(&quot;25-50K&quot;, income), &quot;1&quot;, 
-                   ifelse(grepl(&quot;50-100K&quot;, income), &quot;2&quot;, 
-                   ifelse(grepl(&quot;100-150K&quot;, income), &quot;3&quot;, 
-                   ifelse(grepl(&quot;150-200K&quot;, income), &quot;4&quot;, &quot;other&quot;)))))) %&gt;% 
   mutate(sex = ifelse(Sex == 1, &quot;Female&quot;, &quot;Male&quot;)) %&gt;% 
   dplyr::select(-Sex)</code></pre>
-<pre><code>## Rows: 45 Columns: 11
+<pre><code>## Rows: 45 Columns: 6
 ## ── Column specification ────────────────────────────────────────────────────────
 ## Delimiter: &quot;,&quot;
-## chr (2): income, ethnicity_18m_or_25m
-## dbl (9): ID, Sex, birthorder, Momed, Daded, HI24Final, Age24, WG18Prod, WS24...
+## chr (1): ethnicity_18m_or_25m
+## dbl (5): ID, Sex, Momed, HI24Final, Age24
 ## 
 ## ℹ Use `spec()` to retrieve the full column specification for this data.
 ## ℹ Specify the column types or set `show_col_types = FALSE` to quiet this message.</code></pre>
 <pre class="r"><code>demo_spanish &lt;- read_csv(&quot;./data_demo_lena_transcripts/demo_spanish_ms.csv&quot;) %&gt;%
-  rename(id = &quot;ID&quot;, sex = &quot;Sex&quot;, birth_order = &quot;BirthOrder&quot;, 
-         momed = &quot;MomEd_25m&quot;,  
+  rename(id = &quot;ID&quot;, sex = &quot;Sex&quot;, momed = &quot;MomEd_25m&quot;,  
          momyrs_us = &quot;MomYrsUS&quot;, dadyrs_us = &quot;DadYrsUS&quot;,
          allday_25m_reclength_hrs = &quot;AD25_RecLengthHrs_ALL&quot;, 
          allday_25m_AWChr = &quot;AD25AWChr&quot;, hi = &quot;HI_18&quot;, 
-         age = &quot;Age25m&quot;, span_exposure_25m = &quot;LBQSpan25m&quot;) %&gt;% 
-  mutate(income2 = ifelse(grepl(&quot;&lt;25K&quot;, income), &quot;0&quot;, 
-                   ifelse(grepl(&quot;25-50K&quot;, income), &quot;1&quot;, 
-                   ifelse(grepl(&quot;50-100K&quot;, income), &quot;2&quot;, 
-                   ifelse(grepl(&quot;100-150K&quot;, income), &quot;3&quot;, 
-                   ifelse(grepl(&quot;150-200K&quot;, income), &quot;4&quot;, &quot;other&quot;))))))</code></pre>
+         age = &quot;Age25m&quot;, span_exposure_25m = &quot;LBQSpan25m&quot;)</code></pre>
 <pre><code>## Rows: 45 Columns: 17
 ## ── Column specification ────────────────────────────────────────────────────────
 ## Delimiter: &quot;,&quot;
@@ -1612,14 +1600,12 @@ mean(demo_spanish_US_yrs$momyrs_us)</code></pre>
 <div id="demographics-table" class="section level1">
 <h1>Demographics table</h1>
 <pre class="r"><code>demo_english2 &lt;- demo_english %&gt;% 
-  dplyr::select(age, sex, birth_order, momed, hi, income2) %&gt;% 
-  mutate(language = &quot;english&quot;) %&gt;% 
-  mutate(birth_order = as.factor(birth_order))
+  dplyr::select(age, sex, momed, hi) %&gt;% 
+  mutate(language = &quot;english&quot;)
 
 demo_spanish2 &lt;- demo_spanish %&gt;% 
-  dplyr::select(age, sex, birth_order, momed, hi, income2) %&gt;% 
-  mutate(language = &quot;spanish&quot;) %&gt;% 
-  mutate(birth_order = as.factor(birth_order))
+  dplyr::select(age, sex, momed, hi) %&gt;% 
+  mutate(language = &quot;spanish&quot;)
 
 # combine languages to one df
 demo_both &lt;- rbind(demo_english2, demo_spanish2)

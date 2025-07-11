@@ -30,30 +30,18 @@ theme_set(theme_classic())
 ## Read in demographic information
 ```{r}
 demo_english <- read_csv("./data_demo_lena_transcripts/demo_english_ms.csv") %>% 
-  rename(id = "ID", birth_order = "birthorder", 
-         momed ="Momed", 
+  rename(id = "ID", momed ="Momed", 
          hi = "HI24Final", ethnicity = "ethnicity_18m_or_25m",
          age = "Age24") %>% 
-  mutate(income2 = ifelse(grepl("<25K", income), "0", 
-                   ifelse(grepl("25-50K", income), "1", 
-                   ifelse(grepl("50-100K", income), "2", 
-                   ifelse(grepl("100-150K", income), "3", 
-                   ifelse(grepl("150-200K", income), "4", "other")))))) %>% 
   mutate(sex = ifelse(Sex == 1, "Female", "Male")) %>% 
   dplyr::select(-Sex)
 
 demo_spanish <- read_csv("./data_demo_lena_transcripts/demo_spanish_ms.csv") %>%
-  rename(id = "ID", sex = "Sex", birth_order = "BirthOrder", 
-         momed = "MomEd_25m",  
+  rename(id = "ID", sex = "Sex", momed = "MomEd_25m",  
          momyrs_us = "MomYrsUS", dadyrs_us = "DadYrsUS",
          allday_25m_reclength_hrs = "AD25_RecLengthHrs_ALL", 
          allday_25m_AWChr = "AD25AWChr", hi = "HI_18", 
-         age = "Age25m", span_exposure_25m = "LBQSpan25m") %>% 
-  mutate(income2 = ifelse(grepl("<25K", income), "0", 
-                   ifelse(grepl("25-50K", income), "1", 
-                   ifelse(grepl("50-100K", income), "2", 
-                   ifelse(grepl("100-150K", income), "3", 
-                   ifelse(grepl("150-200K", income), "4", "other"))))))
+         age = "Age25m", span_exposure_25m = "LBQSpan25m")
 ```
 
 
@@ -99,14 +87,12 @@ max(demo_spanish_US_yrs$momyrs_us)
 # Demographics table
 ```{r}
 demo_english2 <- demo_english %>% 
-  dplyr::select(age, sex, birth_order, momed, hi, income2) %>% 
-  mutate(language = "english") %>% 
-  mutate(birth_order = as.factor(birth_order))
+  dplyr::select(age, sex, momed, hi) %>% 
+  mutate(language = "english")
 
 demo_spanish2 <- demo_spanish %>% 
-  dplyr::select(age, sex, birth_order, momed, hi, income2) %>% 
-  mutate(language = "spanish") %>% 
-  mutate(birth_order = as.factor(birth_order))
+  dplyr::select(age, sex, momed, hi) %>% 
+  mutate(language = "spanish")
 
 # combine languages to one df
 demo_both <- rbind(demo_english2, demo_spanish2)
