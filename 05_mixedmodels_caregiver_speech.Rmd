@@ -1,7 +1,7 @@
 ---
 title: "Caregiver Speech Mixed Models - 4 categories"
 author: "Janet Bang"
-date: "May 5, 2025"
+date: "Aug 4, 2025"
 output:
   html_document: 
    toc: true
@@ -200,7 +200,6 @@ mlu_all_mm <- mlu_adult %>%
          segment_num = as.factor(segment_num))
 
 
-
 # chip
 chip_mm <- chip %>% 
   mutate(id = as.character(id)) %>% 
@@ -210,6 +209,11 @@ chip_mm <- chip %>%
          language = as.factor(language), 
          segment_num = as.factor(segment_num))
 
+
+# frequency of observations per cell
+xtabs(~ language + activity, freq_all_mm, na.action = na.omit)
+xtabs(~ language + activity, mlu_all_mm, na.action = na.omit)
+xtabs(~ language + activity, chip_mm, na.action = na.omit)
 
 ```
 
@@ -238,12 +242,20 @@ anova(m1_both_tokens_all, m2_both_tokens_all, m3_both_tokens_all)
 anova(m3_both_tokens_all)
 
 
+# ref grid for final model
+ref_grid(m3_both_tokens_all)
+
+
 # emmeans
+# set REML = T for estimated marginal means
+m3_both_tokens_all <- lmer(tokens_permin2 ~ tokens_hr_child + (language * activity) +
+                                (1 | id) + (1 | segment_num),
+                                data = freq_all_mm, REML = T)
+
+
 # interaction - post hoc tests of simple effects
 m3_both_tokens_all_emmeans_simple1 <- emmeans(m3_both_tokens_all, ~ activity | language)
 m3_both_tokens_all_emmeans_simple2 <- emmeans(m3_both_tokens_all, ~ language | activity)
-
-m3_both_tokens_all_emmeans_simple1
 
 
 rbind(pairs(m3_both_tokens_all_emmeans_simple1), pairs(m3_both_tokens_all_emmeans_simple2))
@@ -273,7 +285,7 @@ tokens <- ggplot(tokens_emmeans, aes(activity, emmean, colour = activity, shape 
   labs(x = "", y = "EMM", title = "Tokens (rate per min)")
 
 tokens
-ggsave("./figures/emmeans_tokens_may5_2025.pdf", width = 6, height = 6, units = "in")
+ggsave("./figures/emmeans_tokens_aug4_2025.pdf", width = 6, height = 6, units = "in")
 
 ```
 
@@ -300,9 +312,16 @@ anova(m1_both_types_all, m2_both_types_all, m3_both_types_all)
 # anova table for final model
 anova(m3_both_types_all)
 
+# ref grid for final model
+ref_grid(m3_both_types_all)
 
 
 # emmeans
+# set REML = T for estimated marginal means
+m3_both_types_all <- lmer(types_permin2 ~ tokens_hr_child + (language * activity) +
+                                (1 | id) + (1 | segment_num),
+                                data = freq_all_mm, REML = T)
+
 # interaction - post hoc tests of simple effects
 m3_both_types_all_emmeans_simple1 <- emmeans(m3_both_types_all, ~ activity | language)
 m3_both_types_all_emmeans_simple2 <- emmeans(m3_both_types_all, ~ language | activity)
@@ -333,7 +352,7 @@ types <- ggplot(types_emmeans, aes(activity, emmean, colour = activity, shape = 
   labs(x = "", y = "EMM", title = "Types (rate per min)")
 
 types
-ggsave("./figures/emmeans_types_may5_2025.pdf", width = 6, height = 6, units = "in")
+ggsave("./figures/emmeans_types_aug4_2025.pdf", width = 6, height = 6, units = "in")
 
 ```
 
@@ -361,25 +380,28 @@ anova(m1_both_mlu_all, m2_both_mlu_all, m3_both_mlu_all)
 # anova table for final model
 anova(m2_both_mlu_all)
 
+# ref grid for final model
+ref_grid(m2_both_mlu_all)
 
 
 # emmeans for activity OR language 
+# set REML = T for estimated marginal means
+m2_both_mlu_all <- lmer(mlu_w2 ~ tokens_hr_child + language + activity +
+                                (1 | id),
+                                data = mlu_all_mm, REML = T)
+
 m2_both_mlu_all_emmeans_activity <- emmeans(m2_both_mlu_all, ~ activity)
 
 m2_both_mlu_all_emmeans_activity
-pairs(m2_both_mlu_all_emmeans_activity)
+pairs(m2_both_mlu_all_emmeans_activity, adjust = "bonferroni")
 
 
 
-# emmeans PER language using model WIHTOUT interactions - for figure
+# emmeans PER language using model WITHOUT interactions - for figure
 m2_both_mlu_all_emmeans_simple1 <- emmeans(m2_both_mlu_all, ~ activity | language)
 m2_both_mlu_all_emmeans_simple2 <- emmeans(m2_both_mlu_all, ~ language | activity)
 
 m2_both_mlu_all_emmeans_simple1
-
-# did not use since the interaction was NS
-# rbind(pairs(m2_both_mlu_all_emmeans_simple1), pairs(m2_both_mlu_all_emmeans_simple2))
-# confint(rbind(pairs(m2_both_mlu_all_emmeans_simple1), pairs(m2_both_mlu_all_emmeans_simple2)))
 
 
 
@@ -402,7 +424,7 @@ mlu <- ggplot(mlu_emmeans, aes(activity, emmean, colour = activity, shape = lang
 
 mlu
 
-ggsave("./figures/emmeans_mlu_may5_2025.pdf", width = 6, height = 6, units = "in")
+ggsave("./figures/emmeans_mlu_aug4_2025.pdf", width = 6, height = 6, units = "in")
 
 ```
 
@@ -430,8 +452,18 @@ anova(m1_both_propresp_all, m2_both_propresp_all, m3_both_propresp_all)
 anova(m3_both_propresp_all)
 
 
+# ref grid for final model
+ref_grid(m3_both_propresp_all)
+
+
 
 # emmeans
+# set REML = T for estimated marginal means
+m3_both_propresp_all <- lmer(prop_adultresp2 ~ tokens_hr_child + (language * activity) +
+                                (1 | id) + (1 | segment_num),
+                                data = chip_mm, REML = T)
+
+
 # interaction - post hoc tests of simple effects
 m3_both_propresp_all_emmeans_simple1 <- emmeans(m3_both_propresp_all, ~ activity | language)
 m3_both_propresp_all_emmeans_simple2 <- emmeans(m3_both_propresp_all, ~ language | activity)
@@ -463,7 +495,7 @@ resp <- ggplot(propresp_emmeans, aes(activity, emmean, colour = activity, shape 
 
 resp
 
-ggsave("./figures/emmeans_resp_may5_2025.pdf", width = 6, height = 6, units = "in")
+ggsave("./figures/emmeans_resp_aug4_2025.pdf", width = 6, height = 6, units = "in")
 
 ```
 
@@ -492,20 +524,34 @@ anova(m1_both_propimitexp_all, m2_both_propimitexp_all, m3_both_propimitexp_all)
 anova(m1_both_propimitexp_all)
 
 
+# ref grid for final model
+ref_grid(m1_both_propimitexp_all)
+
+
 # emmeans
+# set REML = T for estimated marginal means
+m1_both_propimitexp_all <- lmer(prop_adult_imitexp2 ~ tokens_hr_child + activity +
+                                (1 | id) + (1 | segment_num),
+                                data = chip_mm, REML = T)
+
 m1_both_propimitexp_all_emmeans_activity <- emmeans(m1_both_propimitexp_all, ~ activity)
 
 m1_both_propimitexp_all_emmeans_activity
 
 
-# emmans per language using model WIHTOUT interactions
+# emmans per language using model WITHOUT interactions
+# set REML = T for estimated marginal means
+m2_both_propimitexp_all <- lmer(prop_adult_imitexp2 ~ tokens_hr_child + language + activity +
+                                (1 | id) + (1 | segment_num),
+                                data = chip_mm, REML = F)
+
 m2_both_propimitexp_all_emmeans_simple1 <- emmeans(m2_both_propimitexp_all, ~ activity | language)
 m2_both_propimitexp_all_emmeans_simple2 <- emmeans(m2_both_propimitexp_all, ~ language | activity)
 
 m2_both_propimitexp_all_emmeans_simple1
 
 
-# plot
+# plot - use model 2 to plot emmeans per group
 propimitexp_emmeans <- data.frame(emmeans(m2_both_propimitexp_all, ~ activity | language))
 
 
@@ -524,7 +570,7 @@ imit_exp <- ggplot(propimitexp_emmeans, aes(activity, emmean, colour = activity,
 
 imit_exp
 
-ggsave("./figures/emmeans_imit_exp_may5_2025.pdf", width = 6, height = 6, units = "in")
+ggsave("./figures/emmeans_imit_exp_aug4_2025.pdf", width = 6, height = 6, units = "in")
 
 ```
 
@@ -534,20 +580,20 @@ ggsave("./figures/emmeans_imit_exp_may5_2025.pdf", width = 6, height = 6, units 
 ```{r}
 # grid all
 ggarrange(tokens, types, mlu, resp, imit_exp, common.legend = T, legend = "top")
-ggsave("./figures/emmeans_grid_all_line_may5_2025.pdf", width = 14, height = 10, units = "in", dpi = 300)
+ggsave("./figures/emmeans_grid_all_line_aug4_2025.pdf", width = 14, height = 10, units = "in", dpi = 300)
 
 ```
 
 
-# Models to check child covariate
+# Child Covariate models - all together
 ```{r}
-# tokens
 anova(m1_both_tokens_all)
 anova(m1_both_types_all)
 anova(m1_both_mlu_all)
 anova(m1_both_propresp_all)
 anova(m1_both_propimitexp_all)
 ```
+
 
 
 # Mixed models - 4 categories - HI as Moderator
