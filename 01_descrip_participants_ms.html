@@ -1529,15 +1529,13 @@ library(gridExtra)</code></pre>
 ## ℹ Specify the column types or set `show_col_types = FALSE` to quiet this message.</code></pre>
 <pre class="r"><code>demo_spanish &lt;- read_csv(&quot;./data_demo_lena_transcripts/demo_spanish_ms.csv&quot;) %&gt;%
   rename(id = &quot;ID&quot;, sex = &quot;Sex&quot;, momed = &quot;MomEd_25m&quot;,  
-         momyrs_us = &quot;MomYrsUS&quot;, dadyrs_us = &quot;DadYrsUS&quot;,
-         allday_25m_reclength_hrs = &quot;AD25_RecLengthHrs_ALL&quot;, 
-         allday_25m_AWChr = &quot;AD25AWChr&quot;, hi = &quot;HI_18&quot;, 
+         momyrs_us = &quot;MomYrsUS&quot;, hi = &quot;HI_18&quot;, 
          age = &quot;Age25m&quot;, span_exposure_25m = &quot;LBQSpan25m&quot;)</code></pre>
-<pre><code>## Rows: 45 Columns: 17
+<pre><code>## Rows: 45 Columns: 8
 ## ── Column specification ────────────────────────────────────────────────────────
 ## Delimiter: &quot;,&quot;
-## chr  (4): income, Sex, mom_country_birth, dad_country_birth
-## dbl (13): ID, HI_18, MomEd_25m, LBQSpan25m, AD25_RecLengthHrs_ALL, AD25AWChr...
+## chr (2): Sex, mom_country_birth
+## dbl (6): ID, HI_18, MomEd_25m, LBQSpan25m, Age25m, MomYrsUS
 ## 
 ## ℹ Use `spec()` to retrieve the full column specification for this data.
 ## ℹ Specify the column types or set `show_col_types = FALSE` to quiet this message.</code></pre>

@@ -202,7 +202,8 @@ ggplot(freq_adult, aes(activity, tokens_permin, fill = activity)) +
   theme(axis.text.x = element_text(angle = 20, hjust = .7)) + 
   labs(x = "", y = "Tokens Rate") + 
   theme(panel.spacing = unit(4, "lines"))
-ggsave("./figures/boxplot_tokens_rate2.pdf", dpi = 300, width = 18, height = 8, units = "in")
+
+# ggsave("./figures/boxplot_tokens_rate2.pdf", dpi = 300, width = 18, height = 8, units = "in")
 
 
 # summarize data per participant and activity (all speech only)
@@ -297,7 +298,8 @@ ggplot(freq_adult, aes(activity, types_permin, fill = activity)) +
   theme(text = element_text(size = 35)) +
   theme(axis.text.x = element_text(angle = 20, hjust = .7)) + 
   labs(x = "", y = "Types Rate")
-ggsave("./figures/boxplot_types_rate2.pdf", dpi = 300, width = 18, height = 8, units = "in")
+
+# ggsave("./figures/boxplot_types_rate2.pdf", dpi = 300, width = 18, height = 8, units = "in")
 
 
 # descriptives
@@ -356,7 +358,8 @@ ggplot(mlu_adult, aes(activity, mlu_w, fill = activity)) +
   theme(text = element_text(size = 35)) +
   theme(axis.text.x = element_text(angle = 20, hjust = .7)) + 
   labs(x = "", y = "MLUw")
-ggsave("./figures/boxplot_mluw2.pdf", dpi = 300, width = 18, height = 8, units = "in")
+
+# ggsave("./figures/boxplot_mluw2.pdf", dpi = 300, width = 18, height = 8, units = "in")
 
 
 # summarize data per participant and activity (all speech only)
@@ -442,7 +445,8 @@ ggplot(chip2, aes(activity, prop_adultresp_outof_childutt, fill = activity)) +
   geom_hline(yintercept = 1) + # caregiver and child = equal utts
   theme(axis.text.x = element_text(angle = 20, hjust = .7)) + 
   labs(x = "", y = "Prop Responses")
-ggsave("./figures/boxplot_prop_resp2.pdf", dpi = 300, width = 18, height = 8, units = "in")
+
+# ggsave("./figures/boxplot_prop_resp2.pdf", dpi = 300, width = 18, height = 8, units = "in")
 
 
 # summarize data per participant and activity (all speech only)
@@ -509,7 +513,8 @@ ggplot(chip2, aes(activity, prop_adult_imitexp_outof_childutt, fill = activity))
   geom_hline(yintercept = 1) + # caregiver and child = equal utts
   theme(axis.text.x = element_text(angle = 20, hjust = .7)) + 
   labs(x = "", y = "Prop Imitations/Expansions")
-ggsave("./figures/boxplot_prop_imitexp2.pdf", dpi = 300, width = 18, height = 8, units = "in")
+
+# ggsave("./figures/boxplot_prop_imitexp2.pdf", dpi = 300, width = 18, height = 8, units = "in")
 
 
 # descriptives

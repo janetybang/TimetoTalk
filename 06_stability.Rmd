@@ -483,7 +483,8 @@ imitexp_books_cc <- ggplot(propimitexp_mtx_clean, aes(books, cc)) +
   annotate("text", x = 0.13, y = .93, size = 5, label = "r = .32")
 
 ggarrange(tokens_books_cc, types_books_cc, mlu_books_cc, resp_books_cc, imitexp_books_cc)
-ggsave("./figures/scatter_books_cc_only_aug1_2025.pdf", width = 14, height = 10, units = "in", dpi = 300) # centered bottom row in adobe illustrator
+
+# ggsave("./figures/scatter_books_cc_only_aug1_2025.pdf", width = 14, height = 10, units = "in", dpi = 300) # centered bottom row in adobe illustrator
 
 
 # correlation

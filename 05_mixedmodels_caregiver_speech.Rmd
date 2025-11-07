@@ -285,7 +285,7 @@ tokens <- ggplot(tokens_emmeans, aes(activity, emmean, colour = activity, shape 
   labs(x = "", y = "EMM", title = "Tokens (rate per min)")
 
 tokens
-ggsave("./figures/emmeans_tokens_aug4_2025.pdf", width = 6, height = 6, units = "in")
+# ggsave("./figures/emmeans_tokens_aug4_2025.pdf", width = 6, height = 6, units = "in")
 
 ```
 
@@ -352,7 +352,7 @@ types <- ggplot(types_emmeans, aes(activity, emmean, colour = activity, shape = 
   labs(x = "", y = "EMM", title = "Types (rate per min)")
 
 types
-ggsave("./figures/emmeans_types_aug4_2025.pdf", width = 6, height = 6, units = "in")
+# ggsave("./figures/emmeans_types_aug4_2025.pdf", width = 6, height = 6, units = "in")
 
 ```
 
@@ -424,7 +424,7 @@ mlu <- ggplot(mlu_emmeans, aes(activity, emmean, colour = activity, shape = lang
 
 mlu
 
-ggsave("./figures/emmeans_mlu_aug4_2025.pdf", width = 6, height = 6, units = "in")
+# ggsave("./figures/emmeans_mlu_aug4_2025.pdf", width = 6, height = 6, units = "in")
 
 ```
 
@@ -495,7 +495,7 @@ resp <- ggplot(propresp_emmeans, aes(activity, emmean, colour = activity, shape 
 
 resp
 
-ggsave("./figures/emmeans_resp_aug4_2025.pdf", width = 6, height = 6, units = "in")
+# ggsave("./figures/emmeans_resp_aug4_2025.pdf", width = 6, height = 6, units = "in")
 
 ```
 
@@ -570,7 +570,7 @@ imit_exp <- ggplot(propimitexp_emmeans, aes(activity, emmean, colour = activity,
 
 imit_exp
 
-ggsave("./figures/emmeans_imit_exp_aug4_2025.pdf", width = 6, height = 6, units = "in")
+# ggsave("./figures/emmeans_imit_exp_aug4_2025.pdf", width = 6, height = 6, units = "in")
 
 ```
 
@@ -580,7 +580,7 @@ ggsave("./figures/emmeans_imit_exp_aug4_2025.pdf", width = 6, height = 6, units 
 ```{r}
 # grid all
 ggarrange(tokens, types, mlu, resp, imit_exp, common.legend = T, legend = "top")
-ggsave("./figures/emmeans_grid_all_line_aug4_2025.pdf", width = 14, height = 10, units = "in", dpi = 300)
+# ggsave("./figures/emmeans_grid_all_line_aug4_2025.pdf", width = 14, height = 10, units = "in", dpi = 300)
 
 ```
 

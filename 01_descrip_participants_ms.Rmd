@@ -38,9 +38,7 @@ demo_english <- read_csv("./data_demo_lena_transcripts/demo_english_ms.csv") %>%
 
 demo_spanish <- read_csv("./data_demo_lena_transcripts/demo_spanish_ms.csv") %>%
   rename(id = "ID", sex = "Sex", momed = "MomEd_25m",  
-         momyrs_us = "MomYrsUS", dadyrs_us = "DadYrsUS",
-         allday_25m_reclength_hrs = "AD25_RecLengthHrs_ALL", 
-         allday_25m_AWChr = "AD25AWChr", hi = "HI_18", 
+         momyrs_us = "MomYrsUS", hi = "HI_18", 
          age = "Age25m", span_exposure_25m = "LBQSpan25m")
 ```
 

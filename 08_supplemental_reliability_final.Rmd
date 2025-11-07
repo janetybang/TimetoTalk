@@ -527,7 +527,7 @@ sp6 <- ggplot(ir_sp_ac, aes(coder1_dur, coder2_dur)) +
   theme(text = element_text(size = 18)) + 
   labs(x = "", y = "")
 
-pdf("./figures/corr_reliability.pdf", width = 20, height = 9) # Open a new pdf file
+# pdf("./figures/corr_reliability.pdf", width = 20, height = 9) # Open a new pdf file
 grid.arrange(en1, en2, en3, en4, en5, en6, 
              sp1, sp2, sp3, sp4, sp5, sp6, ncol = 6) # Write the grid.arrange in the file
 dev.off()

@@ -238,7 +238,7 @@ ggplot(data_dur_pub, aes(Time, fct_rev(activity), color = activity, shape = Lang
   labs(x = "Time", y = "")
   # theme(axis.title.y = element_text(angle = 0,  vjust = 0.5))
 
-ggsave("./figures/time_activity_by_dur.pdf", width = 22, height = 11, dpi = 300)
+# ggsave("./figures/time_activity_by_dur.pdf", width = 22, height = 11, dpi = 300)
 ```
 
 
@@ -269,7 +269,7 @@ ggplot(data_dur, aes(Time, id, color = language)) +
   labs(x = "Time", y = "Participant")
   
 
-ggsave("./figures/sampling_byTime_perID.pdf", width = 11, height = 8.5, dpi = 300)
+# ggsave("./figures/sampling_byTime_perID.pdf", width = 11, height = 8.5, dpi = 300)
 
 ```
 
@@ -391,7 +391,7 @@ ggplot(data_dur_prop_all_forpub, aes(activity, proportion, fill = activity)) +
         axis.title.y = element_text(angle = 0, vjust = 0.5), 
         panel.spacing = unit(4, "lines"))
 
-ggsave("./figures/boxplot_dur_1hr_w_mean.pdf", width = 19, height = 9, units = "in", dpi = 300)
+# ggsave("./figures/boxplot_dur_1hr_w_mean.pdf", width = 19, height = 9, units = "in", dpi = 300)
 
 ```
 

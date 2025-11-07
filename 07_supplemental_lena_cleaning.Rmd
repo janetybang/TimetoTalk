@@ -141,7 +141,8 @@ ggplot(freq_hour_bin, aes(hour_bin, n, fill = language)) +
   theme(legend.position = "none") + 
   annotate("text", x = 22, y = 24, label = "50%") + 
   annotate("text", x = 22, y = 33, label = "70%")
-ggsave("./figures/freq_hour_bin.pdf", dpi = 300, width = 11, height = 8, units = "in")
+
+# ggsave("./figures/freq_hour_bin.pdf", dpi = 300, width = 11, height = 8, units = "in")
 ```
 
 
