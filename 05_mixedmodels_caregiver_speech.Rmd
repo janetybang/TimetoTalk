@@ -257,6 +257,7 @@ m3_both_tokens_all <- lmer(tokens_permin2 ~ tokens_hr_child + (language * activi
 m3_both_tokens_all_emmeans_simple1 <- emmeans(m3_both_tokens_all, ~ activity | language)
 m3_both_tokens_all_emmeans_simple2 <- emmeans(m3_both_tokens_all, ~ language | activity)
 
+m3_both_tokens_all_emmeans_simple1
 
 rbind(pairs(m3_both_tokens_all_emmeans_simple1), pairs(m3_both_tokens_all_emmeans_simple2))
 confint(rbind(pairs(m3_both_tokens_all_emmeans_simple1), pairs(m3_both_tokens_all_emmeans_simple2)))

@@ -1760,8 +1760,24 @@ m3_both_tokens_all &lt;- lmer(tokens_permin2 ~ tokens_hr_child + (language * act
 m3_both_tokens_all_emmeans_simple1 &lt;- emmeans(m3_both_tokens_all, ~ activity | language)
 m3_both_tokens_all_emmeans_simple2 &lt;- emmeans(m3_both_tokens_all, ~ language | activity)
 
-
-rbind(pairs(m3_both_tokens_all_emmeans_simple1), pairs(m3_both_tokens_all_emmeans_simple2))</code></pre>
+m3_both_tokens_all_emmeans_simple1</code></pre>
+<pre><code>## language = english:
+##  activity emmean   SE  df lower.CL upper.CL
+##  books      88.8 6.01 848     77.0    100.6
+##  cc         65.0 3.34 176     58.4     71.6
+##  ac         74.7 3.59 241     67.6     81.8
+##  non_tcds   35.3 3.23 158     28.9     41.7
+## 
+## language = spanish:
+##  activity emmean   SE  df lower.CL upper.CL
+##  books      63.9 6.77 926     50.6     77.2
+##  cc         51.1 3.47 182     44.3     58.0
+##  ac         56.0 3.62 222     48.9     63.2
+##  non_tcds   29.8 3.27 149     23.4     36.3
+## 
+## Degrees-of-freedom method: kenward-roger 
+## Confidence level used: 0.95</code></pre>
+<pre class="r"><code>rbind(pairs(m3_both_tokens_all_emmeans_simple1), pairs(m3_both_tokens_all_emmeans_simple2))</code></pre>
 <pre><code>##  language activity contrast          estimate   SE   df t.ratio p.value
 ##  english  .        books - cc           23.77 5.98 1391   3.978  0.0012
 ##  english  .        books - ac           14.10 6.19 1401   2.278  0.3662
